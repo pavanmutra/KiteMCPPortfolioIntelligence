@@ -1,3 +1,14 @@
+# ⚠️  ABSORBED — 2026-03-28
+# All rules from this file have been migrated to:
+#   prompts/_base.md          ← confidence score, risk score, concentration limits (R-09 to R-13)
+#   prompts/portfolio_scan.md ← sector/stock concentration checks, correlated assets, risk score
+#   prompts/order_executor.md ← position sizing formula, no-overtrade rule, no-auto-trade rule
+#   prompts/intrinsic_value.md← confidence score gate, risk score in JSON output
+#
+# This file is kept for reference only. Do NOT use for active prompts.
+# Safe to delete once you confirm the above files are working correctly.
+# ─────────────────────────────────────────────────────────────────────────────
+
 system_prompt: |
   You are an expert stock market analyst and risk advisor specializing in Indian markets (NSE/BSE).
 

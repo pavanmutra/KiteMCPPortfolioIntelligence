@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+
+# Generated reports — large binary files, regenerated daily
+reports/*.docx
+reports/*.xlsx
+
+# Sensitive / personal files
+cookies.txt
+nul
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+*.swp
+
+# Keep these committed:
+# reports/*.json  ← AI-generated data, useful for history
+# reports/*.md    ← markdown notes, useful for history

@@ -10,30 +10,37 @@ Fetch live portfolio, compute P&L, flag movers, and produce the morning snapshot
 
 ```
 PORTFOLIO SCAN CHECKLIST
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-[ ] 1. Connect to Kite via MCP (verify token is valid)
-[ ] 2. Fetch all holdings (quantity, avg_price, last_price)
-[ ] 3. Fetch all positions (day trading positions)
-[ ] 4. Calculate for each holding:
+────────────────────────────────────────
+[ ] 1.  Connect to Kite via MCP (verify token is valid)
+[ ] 2.  Fetch all holdings (quantity, avg_price, last_price)
+[ ] 3.  Fetch all positions (day trading positions)
+[ ] 4.  Calculate for each holding:
         [ ] Current Market Value = qty × last_price
+        [ ] Portfolio Weight % = (Market Value / Total Portfolio) × 100
         [ ] Unrealised P&L = (last_price − avg_price) × qty
         [ ] P&L % = ((last_price − avg_price) / avg_price) × 100
-[ ] 5. Flag holdings with day change > ±3%
-[ ] 6. Flag holdings with total P&L < −15% (stop-loss review)
-[ ] 7. Calculate TAX-LOSS HARVESTING candidates:
+[ ] 5.  Flag holdings with day change > ±3%
+[ ] 6.  Flag holdings with total P&L < −15% (stop-loss review)
+[ ] 7.  CONCENTRATION CHECKS (from configs risk rules):
+        [ ] Any single stock > 25% portfolio weight? → ⚠️ FLAG (R-10)
+        [ ] Any sector > 40% portfolio weight? → ⚠️ FLAG (R-11)
+        [ ] Any 3+ stocks in same sector/theme? → FLAG correlated risk
+[ ] 8.  Calculate TAX-LOSS HARVESTING candidates:
         [ ] Flag stocks with P&L < -10% (potential tax loss)
         [ ] Calculate estimated tax savings if harvested
-[ ] 8. Track DIVIDEND income:
+[ ] 9.  Track DIVIDEND income:
         [ ] Note dividend-yielding stocks in portfolio
         [ ] List expected annual dividend income
-[ ] 9. Calculate CAPITAL GAINS:
+[ ] 10. Calculate CAPITAL GAINS:
         [ ] Unrealized gains/losses per stock
         [ ] Short-term vs long-term classification
-[ ] 10. Check margin / available cash balance
-[ ] 11. Verify no pending failed orders from previous session
-[ ] 12. Save snapshot → reports/YYYY-MM-DD_portfolio_snapshot.json
-[ ] 13. Confirm snapshot saved before proceeding
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[ ] 11. Calculate PORTFOLIO RISK SCORE (0–100):
+        [ ] Apply risk driver scoring from _base.md
+        [ ] Label as: LOW / MEDIUM / HIGH / CRITICAL
+[ ] 12. Check margin / available cash balance
+[ ] 13. Verify no pending failed orders from previous session
+[ ] 14. Save snapshot → reports/YYYY-MM-DD_portfolio_snapshot.json
+────────────────────────────────────────
 ```
 
 ## KiteMCP Calls
@@ -70,6 +77,16 @@ kite.getOrders()
   "total_pnl": -40588,
   "total_pnl_percent": -6.43,
   "available_margin": 1999661.80,
+  "portfolio_risk_score": 42,
+  "portfolio_risk_label": "MEDIUM RISK",
+  "concentration_flags": [
+    { "type": "stock", "symbol": "EXAMPLE", "weight": 28.5, "flag": "STOCK > 25% of portfolio" }
+  ],
+  "sector_weights": {
+    "Auto": 35.2,
+    "Financial Services": 28.1,
+    "Technology": 18.5
+  },
   "positions": [],
   "pending_orders": [],
   "tax_summary": {

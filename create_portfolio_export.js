@@ -1,8 +1,9 @@
-const { Workbook, Worksheet } = require('exceljs');
-const fs = require('fs');
+const { Workbook } = require('exceljs');
+const fs   = require('fs');
+const path = require('path');
 
-const today = new Date().toISOString().split('T')[0];
-const reportDate = today.replace(/-/g, '-');
+const today      = new Date().toISOString().split('T')[0];
+const reportDate = today;
 
 function readJsonFile(filepath) {
     try {
@@ -15,31 +16,70 @@ function readJsonFile(filepath) {
     return null;
 }
 
-const portfolioData = readJsonFile(`reports/${reportDate}_portfolio_snapshot.json`);
-const valueData = readJsonFile(`reports/${reportDate}_value_screen.json`);
-const commodityData = readJsonFile(`reports/${reportDate}_commodity_opportunities.json`);
+const portfolioData  = readJsonFile(`reports/${reportDate}_portfolio_snapshot.json`);
+const valueData      = readJsonFile(`reports/${reportDate}_value_screen.json`);
+const commodityData  = readJsonFile(`reports/${reportDate}_commodity_opportunities.json`);
+
+// Build IV lookup map: symbol → { margin_of_safety, action, graham_number }
+const ivMap = {};
+(valueData?.stocks || []).forEach(s => { ivMap[s.symbol] = s; });
+
+/**
+ * Derive action from IV screen (MoS-based) — preferred over P&L-based.
+ * Falls back to P&L heuristic if IV data not available for the symbol.
+ */
+function getExportAction(symbol, pnl_percent) {
+    const iv = ivMap[symbol];
+    if (iv) {
+        if (iv.margin_of_safety > 40)  return 'STRONG ACCUMULATE';
+        if (iv.margin_of_safety > 25)  return 'ACCUMULATE ON DIPS';
+        if (iv.margin_of_safety < -15) return 'TRIM / EXIT';
+        return 'HOLD';
+    }
+    // Fallback: use P&L with tax-loss harvest flag
+    if (pnl_percent < -15) return 'TAX LOSS HARVEST';
+    if (pnl_percent < -10) return 'REVIEW';
+    return 'HOLD';
+}
+
+/**
+ * Classify tax category from holding period.
+ * LTCG: >= 365 days, STCG: < 365 days.
+ * Uses purchase_date field from JSON if present; otherwise uses holding_period_days.
+ */
+function getTaxCategory(h) {
+    let days = h.holding_period_days || 0;
+    if (h.purchase_date) {
+        const purchased = new Date(h.purchase_date);
+        const now = new Date();
+        days = Math.floor((now - purchased) / (1000 * 60 * 60 * 24));
+    }
+    return days >= 365 ? 'LONG-TERM (LTCG 10%)' : 'SHORT-TERM (STCG 15%)';
+}
 
 const rawHoldings = portfolioData?.holdings || [
-    { symbol: "TMCV", quantity: 110, average_price: 355.37, last_price: 431.85, pnl: 8412.26, pnl_percent: 21.53, dividend_yield: 0.5 },
-    { symbol: "NXST-RR", quantity: 650, average_price: 135.19, last_price: 155.52, pnl: 13217.14, pnl_percent: 14.4, dividend_yield: 6.2 },
-    { symbol: "IOB", quantity: 7849, average_price: 38.51, last_price: 33.72, pnl: -37634, pnl_percent: -12.4, dividend_yield: 2.1 },
-    { symbol: "JINDALPHOT", quantity: 85, average_price: 1320.71, last_price: 1141.4, pnl: -15241, pnl_percent: -13.6, dividend_yield: 0.8 },
-    { symbol: "VHL", quantity: 35, average_price: 3608.39, last_price: 3148.2, pnl: -16107, pnl_percent: -12.8, dividend_yield: 1.2 },
-    { symbol: "CAMS", quantity: 228, average_price: 713.99, last_price: 644.20, pnl: -15912, pnl_percent: -9.8, dividend_yield: 1.5 }
+    { symbol: "TMCV",       quantity: 110,  average_price: 355.37,  last_price: 431.85, pnl: 8412.26,  pnl_percent: 21.53, dividend_yield: 0.5, holding_period_days: 380 },
+    { symbol: "NXST-RR",   quantity: 650,  average_price: 135.19,  last_price: 155.52, pnl: 13217.14, pnl_percent: 14.4,  dividend_yield: 6.2, holding_period_days: 290 },
+    { symbol: "JINDALPHOT",quantity: 85,   average_price: 1320.71, last_price: 1141.4, pnl: -15241,   pnl_percent: -13.6, dividend_yield: 0.8, holding_period_days: 210 },
+    { symbol: "VHL",        quantity: 35,   average_price: 3608.39, last_price: 3148.2, pnl: -16107,   pnl_percent: -12.8, dividend_yield: 1.2, holding_period_days: 195 },
+    { symbol: "CAMS",       quantity: 228,  average_price: 713.99,  last_price: 644.20, pnl: -15912,   pnl_percent: -9.8,  dividend_yield: 1.5, holding_period_days: 420 },
+    { symbol: "ENERGY",     quantity: 2571, average_price: 36.08,   last_price: 35.71,  pnl: -955,     pnl_percent: -1.0,  dividend_yield: 0.0, holding_period_days: 150 }
 ];
 
 const holdings = rawHoldings.map(h => ({
-    symbol: h.symbol,
-    quantity: h.quantity,
-    avg_price: h.average_price,
-    current_price: h.last_price,
-    invested: h.quantity * h.average_price,
-    current_value: h.quantity * h.last_price,
-    pnl: h.pnl,
-    pnl_percent: h.pnl_percent,
-    dividend_yield: h.dividend_yield || 0,
-    tax_category: "LONG-TERM",
-    holding_period_days: 180
+    symbol:        h.symbol,
+    quantity:      h.quantity,
+    avg_price:     h.average_price || h.avg_price,
+    current_price: h.last_price   || h.current_price,
+    invested:      h.quantity * (h.average_price || h.avg_price),
+    current_value: h.quantity * (h.last_price    || h.current_price),
+    pnl:           h.pnl,
+    pnl_percent:   h.pnl_percent  || ((h.pnl / (h.quantity * (h.average_price || h.avg_price))) * 100),
+    dividend_yield:h.dividend_yield || 0,
+    tax_category:  getTaxCategory(h),
+    holding_period_days: h.holding_period_days || 0,
+    margin_of_safety: ivMap[h.symbol]?.margin_of_safety ?? null,
+    intrinsic_value:  ivMap[h.symbol]?.graham_number ?? null,
 }));
 
 const commodities = commodityData?.commodities || [
@@ -58,17 +98,19 @@ const holdingsSheet = wb.addWorksheet('Holdings', {
 });
 
 holdingsSheet.columns = [
-    { header: 'Symbol', key: 'symbol', width: 10 },
-    { header: 'Qty', key: 'quantity', width: 8 },
-    { header: 'Avg Price (₹)', key: 'avg_price', width: 14 },
-    { header: 'Current (₹)', key: 'current_price', width: 12 },
-    { header: 'Invested (₹)', key: 'invested', width: 14 },
-    { header: 'Current Value (₹)', key: 'current_value', width: 14 },
-    { header: 'P&L (₹)', key: 'pnl', width: 12 },
-    { header: 'P&L %', key: 'pnl_percent', width: 10 },
-    { header: 'Div Yield %', key: 'dividend_yield', width: 12 },
-    { header: 'Tax Category', key: 'tax_category', width: 12 },
-    { header: 'Action', key: 'action', width: 14 }
+    { header: 'Symbol',            key: 'symbol',           width: 12 },
+    { header: 'Qty',               key: 'quantity',         width: 8  },
+    { header: 'Avg Price (₹)',     key: 'avg_price',        width: 14 },
+    { header: 'Current (₹)',       key: 'current_price',    width: 12 },
+    { header: 'Invested (₹)',      key: 'invested',         width: 14 },
+    { header: 'Current Value (₹)', key: 'current_value',    width: 16 },
+    { header: 'P&L (₹)',           key: 'pnl',              width: 12 },
+    { header: 'P&L %',             key: 'pnl_percent',      width: 10 },
+    { header: 'IV / Graham (₹)',   key: 'intrinsic_value',  width: 14 },
+    { header: 'MoS %',             key: 'margin_of_safety', width: 10 },
+    { header: 'Div Yield %',       key: 'dividend_yield',   width: 12 },
+    { header: 'Tax Category',      key: 'tax_category',     width: 22 },
+    { header: 'Action',            key: 'action',           width: 20 }
 ];
 
 holdingsSheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFF' } };
@@ -76,20 +118,33 @@ holdingsSheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { a
 holdingsSheet.getRow(1).alignment = { horizontal: 'center' };
 
 holdings.forEach(h => {
-    const action = h.pnl_percent > 10 ? 'HOLD' : h.pnl_percent > 0 ? 'HOLD' : h.pnl_percent < -10 ? 'TAX LOSS HARVEST' : 'WATCH';
-    holdingsSheet.addRow({
-        symbol: h.symbol,
-        quantity: h.quantity,
-        avg_price: parseFloat(h.avg_price.toFixed(2)),
-        current_price: parseFloat(h.current_price.toFixed(2)),
-        invested: Math.round(h.invested),
-        current_value: Math.round(h.current_value),
-        pnl: Math.round(h.pnl),
-        pnl_percent: parseFloat(h.pnl_percent.toFixed(1)),
-        dividend_yield: parseFloat(h.dividend_yield.toFixed(1)),
-        tax_category: h.tax_category,
-        action: action
+    const action = getExportAction(h.symbol, h.pnl_percent);
+    const row = holdingsSheet.addRow({
+        symbol:           h.symbol,
+        quantity:         h.quantity,
+        avg_price:        parseFloat(h.avg_price.toFixed(2)),
+        current_price:    parseFloat(h.current_price.toFixed(2)),
+        invested:         Math.round(h.invested),
+        current_value:    Math.round(h.current_value),
+        pnl:              Math.round(h.pnl),
+        pnl_percent:      parseFloat(h.pnl_percent.toFixed(1)),
+        intrinsic_value:  h.intrinsic_value ? Math.round(h.intrinsic_value) : 'N/A',
+        margin_of_safety: h.margin_of_safety != null ? parseFloat(h.margin_of_safety.toFixed(1)) : 'N/A',
+        dividend_yield:   parseFloat(h.dividend_yield.toFixed(1)),
+        tax_category:     h.tax_category,
+        action:           action
     });
+    // Colour-code P&L cell
+    const pnlCell = row.getCell('pnl');
+    pnlCell.font = { color: { argb: h.pnl >= 0 ? 'FF00B050' : 'FFC00000' } };
+    // Colour-code Action cell
+    const actionCell = row.getCell('action');
+    const actionFill = action.includes('ACCUMULATE') ? 'FFC6EFCE'
+                     : action.includes('TRIM')       ? 'FFFFC7CE'
+                     : action.includes('HARVEST')    ? 'FFFFEB9C'
+                     : 'FFFFFFFF';
+    actionCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: actionFill } };
+    actionCell.font = { bold: true };
 });
 
 const totalInvested = holdings.reduce((sum, h) => sum + h.invested, 0);
@@ -259,7 +314,7 @@ weeklySheet.addRow({ metric: 'New Positions', this_week: 0, change: '' });
 weeklySheet.addRow({ metric: 'Closed Positions', this_week: 0, change: '' });
 weeklySheet.addRow({ metric: 'Expected Dividend Income', this_week: Math.round(totalDividend), change: '' });
 
-const outputPath = `C:/Users/pc/Desktop/kitemcp/reports/Portfolio_${reportDate}.xlsx`;
+const outputPath = path.join(__dirname, 'reports', `Portfolio_${reportDate}.xlsx`);
 wb.xlsx.writeFile(outputPath).then(() => {
     console.log(`Portfolio Excel saved to: ${outputPath}`);
     console.log('\n=== SHEETS GENERATED ===');

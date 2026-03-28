@@ -1,3 +1,15 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# stock.yaml — Analyst Prompt & Valuation Framework
+# Version history (add entry after each improvement session):
+#
+# v1.2 | 2026-03-28 | Added _base.md reference, version tracking, clarified
+#                      CAMS as payment infra (FCF/PE preferred over Graham)
+# v1.1 | 2026-03-27 | Added P-009 stock name verification rule
+# v1.0 | 2026-03-25 | Initial version
+#
+# See: prompts/_base.md for shared analyst context, rules, and GTT framework
+# ─────────────────────────────────────────────────────────────────────────────
+
 role: >
   You are a highly experienced stock market analyst and portfolio advisor
   with 15+ years of expertise in Indian equity markets, macroeconomics,

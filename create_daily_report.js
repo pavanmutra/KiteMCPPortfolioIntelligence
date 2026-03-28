@@ -1,7 +1,8 @@
 const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, 
         HeadingLevel, AlignmentType, BorderStyle, WidthType, ShadingType,
         Header, Footer, PageNumber } = require('docx');
-const fs = require('fs');
+const fs   = require('fs');
+const path = require('path');
 
 // Get today's date
 const today = new Date().toISOString().split('T')[0];
@@ -67,7 +68,38 @@ if (valueData?.stocks) {
     });
 }
 
-// From Portfolio - Large losses
+// NOTE: Large-loss check against holdings runs after holdings is declared below.
+// See immediateActionsFromHoldings() called after holdings is initialized.
+
+// Get news opportunities
+const newsOpportunities = newsOppData?.opportunities || [];
+
+// Use loaded data or fallback to defaults - map JSON keys to internal format
+const rawHoldings = portfolioData?.holdings || [
+    { symbol: "CAMS",       quantity: 228,  average_price: 713.99,  last_price: 644.20,  pnl: -15912.05 },
+    { symbol: "ENERGY",     quantity: 2571, average_price: 36.08,   last_price: 35.71,   pnl: -955.87   },
+    { symbol: "JINDALPHOT", quantity: 85,   average_price: 1320.71, last_price: 1096.30, pnl: -19074.90 },
+    { symbol: "NXST-RR",    quantity: 650,  average_price: 135.19,  last_price: 155.52,  pnl: 13217.14  },
+    { symbol: "TMCV",       quantity: 110,  average_price: 355.37,  last_price: 431.85,  pnl: 8412.26   },
+    { symbol: "VHL",        quantity: 35,   average_price: 3608.39, last_price: 3143.40, pnl: -16274.50 }
+];
+
+// Normalize holding data - handle different JSON key formats
+const holdings = rawHoldings.map(h => ({
+    symbol: h.symbol || h.tradingsymbol,
+    qty:    h.quantity    || h.qty,
+    avg:    h.average_price || h.avg,
+    last:   h.last_price  || h.last,
+    pnl:    h.pnl
+}));
+
+const totalValue    = holdings.reduce((sum, h) => sum + (h.qty * h.last), 0);
+const totalInvested = holdings.reduce((sum, h) => sum + (h.qty * h.avg), 0);
+const totalPnl      = holdings.reduce((sum, h) => sum + h.pnl, 0);
+const totalPnlPct   = (totalPnl / totalInvested * 100);
+const availableMargin = portfolioData?.available_margin || 1999661.80;
+
+// Now that holdings is declared, add large-loss immediate actions
 holdings.filter(h => (h.pnl / (h.qty * h.avg) * 100) < -15).forEach(h => {
     const lossPct = (h.pnl / (h.qty * h.avg) * 100).toFixed(1);
     immediateActions.push({
@@ -78,34 +110,6 @@ holdings.filter(h => (h.pnl / (h.qty * h.avg) * 100) < -15).forEach(h => {
         action_required: "Review stop-loss"
     });
 });
-
-// Get news opportunities
-const newsOpportunities = newsOppData?.opportunities || [];
-
-// Use loaded data or fallback to defaults - map JSON keys to internal format
-const rawHoldings = portfolioData?.holdings || [
-    { symbol: "CAMS", qty: 228, avg: 713.99, last: 644.20, pnl: -15912.05 },
-    { symbol: "ENERGY", qty: 2571, avg: 36.08, last: 35.71, pnl: -955.87 },
-    { symbol: "JINDALPHOT", qty: 85, avg: 1320.71, last: 1096.30, pnl: -19074.90 },
-    { symbol: "NXST-RR", qty: 650, avg: 135.19, last: 155.52, pnl: 13217.14 },
-    { symbol: "TMCV", qty: 110, avg: 355.37, last: 431.85, pnl: 8412.26 },
-    { symbol: "VHL", qty: 35, avg: 3608.39, last: 3143.40, pnl: -16274.50 }
-];
-
-// Normalize holding data - handle different JSON key formats
-const holdings = rawHoldings.map(h => ({
-    symbol: h.symbol || h.tradingsymbol,
-    qty: h.quantity || h.qty,
-    avg: h.average_price || h.avg,
-    last: h.last_price || h.last,
-    pnl: h.pnl
-}));
-
-const totalValue = holdings.reduce((sum, h) => sum + (h.qty * h.last), 0);
-const totalInvested = holdings.reduce((sum, h) => sum + (h.qty * h.avg), 0);
-const totalPnl = holdings.reduce((sum, h) => sum + h.pnl, 0);
-const totalPnlPct = (totalPnl / totalInvested * 100);
-const availableMargin = portfolioData?.available_margin || 1999661.80;
 
 // Get deep discount stocks from value screen
 const deepDiscountStocks = valueData?.stocks?.filter(s => s.margin_of_safety > 25) || [];
@@ -431,213 +435,6 @@ const doc = new Document({
             new Paragraph({ children: [] }),
             
             new Paragraph({ children: [] }),
-            
-            new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun("1. PORTFOLIO SUMMARY")] }),
-            new Table({
-                width: { size: 9360, type: WidthType.DXA },
-                columnWidths: [4680, 4680],
-                rows: [
-                    new TableRow({ children: [
-                        createCell("Total Portfolio Value", 4680, { bold: true }),
-                        createCell("\u20B9 " + totalValue.toLocaleString('en-IN', {minimumFractionDigits: 0}), 4680)
-                    ]}),
-                    new TableRow({ children: [
-                        createCell("Total Investment", 4680, { bold: true }),
-                        createCell("\u20B9 " + totalInvested.toLocaleString('en-IN', {minimumFractionDigits: 0}), 4680)
-                    ]}),
-                    new TableRow({ children: [
-                        createCell("Unrealized P&L", 4680, { bold: true }),
-                        createCell((totalPnl < 0 ? "- " : "+ ") + "\u20B9 " + Math.abs(totalPnl).toLocaleString('en-IN', {minimumFractionDigits: 0}) + " (" + (totalPnl/totalInvested*100).toFixed(1) + "%)", 4680, { color: totalPnl < 0 ? "C00000" : "00B050" })
-                    ]}),
-                    new TableRow({ children: [
-                        createCell("Available Margin", 4680, { bold: true }),
-                        createCell("\u20B9 " + Math.round(availableMargin).toLocaleString('en-IN', {minimumFractionDigits: 0}), 4680)
-                    ]}),
-                ]
-            }),
-            new Paragraph({ children: [] }),
-            
-            new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun("2. HOLDINGS BREAKDOWN")] }),
-            new Table({
-                width: { size: 9360, type: WidthType.DXA },
-                columnWidths: [1200, 900, 1100, 1200, 1500, 1260, 1260],
-                rows: [
-                    new TableRow({ children: [
-                        createHeaderCell("Symbol", 1200),
-                        createHeaderCell("Qty", 900),
-                        createHeaderCell("Avg (\u20B9)", 1100),
-                        createHeaderCell("Current (\u20B9)", 1200),
-                        createHeaderCell("P&L (\u20B9)", 1500),
-                        createHeaderCell("P&L %", 1260),
-                        createHeaderCell("Action", 1260)
-                    ]}),
-                    ...holdings.map(h => new TableRow({ children: [
-                        createCell(h.symbol, 1200),
-                        createCell(h.qty?.toString() || "0", 900),
-                        createCell(h.avg?.toFixed(2) || "0", 1100),
-                        createCell(h.last?.toFixed(2) || "0", 1200),
-                        createCell((h.pnl >= 0 ? "+" : "") + Math.round(h.pnl || 0).toLocaleString('en-IN'), 1500, { color: (h.pnl || 0) >= 0 ? "00B050" : "C00000" }),
-                        createCell(((h.pnl || 0) / (h.qty || 1) / (h.avg || 1) * 100).toFixed(1) + "%", 1260, { color: (h.pnl || 0) >= 0 ? "00B050" : "C00000" }),
-                        createCell(getAction(h.symbol), 1260, { 
-                            fill: getAction(h.symbol) === "ACCUMULATE" ? "C6EFCE" : getAction(h.symbol) === "TRIM/EXIT" ? "FFC7CE" : "FFEB9C",
-                            bold: true 
-                        })
-                    ]}))
-                ]
-            }),
-            new Paragraph({ children: [] }),
-
-            // Section 3: Deep Discount Stocks (from value_screen.json)
-            new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun("3. DEEP DISCOUNT STOCKS")] }),
-            new Paragraph({ children: [new TextRun({ text: "Stocks with Margin of Safety > 25% (Undervalued)", bold: true, font: "Arial" })] }),
-            new Paragraph({ children: [] }),
-            ...(deepDiscountStocks.length > 0 ? [
-                new Table({
-                    width: { size: 9360, type: WidthType.DXA },
-                    columnWidths: [1560, 1560, 1560, 1560, 1560, 1560],
-                    rows: [
-                        new TableRow({ children: [
-                            createHeaderCell("Symbol", 1560),
-                            createHeaderCell("Current", 1560),
-                            createHeaderCell("IV (Graham)", 1560),
-                            createHeaderCell("MoS %", 1560),
-                            createHeaderCell("Status", 1560),
-                            createHeaderCell("Action", 1560)
-                        ]}),
-                        ...deepDiscountStocks.map(s => new TableRow({ children: [
-                            createCell(s.symbol, 1560),
-                            createCell(s.current_price?.toString() || "0", 1560),
-                            createCell(Math.round(s.graham_number || 0).toString(), 1560),
-                            createCell(s.margin_of_safety?.toFixed(1) + "%" || "0%", 1560, { color: "00B050", bold: true }),
-                            createCell(s.status || "DEEP DISCOUNT", 1560, { fill: "C6EFCE" }),
-                            createCell(s.action || "ACCUMULATE", 1560, { fill: "C6EFCE", bold: true })
-                        ]}))
-                    ]
-                })
-            ] : [
-                new Paragraph({ children: [new TextRun({ text: "No deep discount stocks found in current portfolio.", font: "Arial", color: "666666" })] })
-            ]),
-            new Paragraph({ children: [] }),
-
-            // Section 4: Overvalued Stocks
-            new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun("4. OVERVALUED STOCKS")] }),
-            new Paragraph({ children: [new TextRun({ text: "Stocks trading above intrinsic value", bold: true, font: "Arial" })] }),
-            new Paragraph({ children: [] }),
-            ...(overvaluedStocks.length > 0 ? [
-                new Table({
-                    width: { size: 9360, type: WidthType.DXA },
-                    columnWidths: [2340, 2340, 2340, 2340],
-                    rows: [
-                        new TableRow({ children: [
-                            createHeaderCell("Symbol", 2340),
-                            createHeaderCell("Current", 2340),
-                            createHeaderCell("IV (Graham)", 2340),
-                            createHeaderCell("Action", 2340)
-                        ]}),
-                        ...overvaluedStocks.map(s => new TableRow({ children: [
-                            createCell(s.symbol, 2340),
-                            createCell(s.current_price?.toString() || "0", 2340),
-                            createCell(Math.round(s.graham_number || 0).toString(), 2340),
-                            createCell(s.action || "HOLD/TRIM", 2340, { fill: "FFC7CE", bold: true })
-                        ]}))
-                    ]
-                })
-            ] : [
-                new Paragraph({ children: [new TextRun({ text: "No overvalued stocks in portfolio.", font: "Arial", color: "666666" })] })
-            ]),
-            new Paragraph({ children: [] }),
-
-            // Section 5: GTT Protection Status
-            new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun("5. GTT PROTECTION STATUS")] }),
-            new Paragraph({ children: [new TextRun({ 
-                text: `${activeGTTs} active GTT orders | ${protectedHoldings} holdings protected`, 
-                bold: true, 
-                font: "Arial", 
-                color: protectedHoldings === holdings.length ? "00B050" : "C00000" 
-            })] }),
-            ...(gttData?.unprotected_holdings?.length > 0 ? [
-                new Paragraph({ children: [new TextRun({ text: "WARNING: Unprotected holdings: " + gttData.unprotected_holdings.join(", "), font: "Arial", color: "C00000" })] })
-            ] : []),
-            new Paragraph({ children: [] }),
-
-            // Section 6: Investment Opportunities (from web search)
-            new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun("6. INVESTMENT OPPORTUNITIES")] }),
-            new Paragraph({ heading: HeadingLevel.HEADING_2, children: [new TextRun("Web-Scanned Opportunities")]}),
-            ...(opportunities.length > 0 ? [
-                new Table({
-                    width: { size: 9360, type: WidthType.DXA },
-                    columnWidths: [1560, 1560, 1560, 1560, 1560],
-                    rows: [
-                        new TableRow({ children: [
-                            createHeaderCell("Stock", 1560),
-                            createHeaderCell("Horizon", 1560),
-                            createHeaderCell("Target 3M", 1560),
-                            createHeaderCell("Upside", 1560),
-                            createHeaderCell("Recommendation", 1560)
-                        ]}),
-                        ...opportunities.slice(0, 5).map(o => new TableRow({ children: [
-                            createCell(o.symbol, 1560),
-                            createCell(o.horizon, 1560),
-                            createCell(o.target_3m ? "\u20B9" + o.target_3m : "-", 1560),
-                            createCell(o.upside_3m ? "+" + o.upside_3m + "%" : "-", 1560, { color: "00B050" }),
-                            createCell(o.recommendation, 1560, { fill: "C6EFCE" })
-                        ]}))
-                    ]
-                })
-            ] : [
-                new Paragraph({ children: [new TextRun({ text: "No new opportunities scanned today.", font: "Arial", color: "666666" })] })
-            ]),
-            new Paragraph({ children: [] }),
-
-            // Section 7: Action Items
-            new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun("7. ACTION ITEMS")] }),
-            new Paragraph({ children: [new TextRun({ text: "Today's Recommended Actions:", bold: true, font: "Arial" })] }),
-            ...(deepDiscountStocks.length > 0 ? [
-                new Paragraph({ numbering: { reference: "numbers", level: 0 }, children: [new TextRun({ text: "Deep discount stocks available - consider ACCUMULATE on dips", font: "Arial", color: "00B050" })] })
-            ] : []),
-            ...(overvaluedStocks.length > 2 ? [
-                new Paragraph({ numbering: { reference: "numbers", level: 0 }, children: [new TextRun({ text: "Multiple overvalued stocks - consider TRIMMING positions", font: "Arial", color: "C00000" })] })
-            ] : []),
-            new Paragraph({ numbering: { reference: "numbers", level: 0 }, children: [new TextRun({ text: "Ensure all holdings have GTT stop-loss protection", font: "Arial" })] }),
-            new Paragraph({ numbering: { reference: "numbers", level: 0 }, children: [new TextRun({ text: "Review opportunities before making new purchases", font: "Arial" })] }),
-            new Paragraph({ children: [] }),
-
-            // Section 8: Market Status
-            new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun("8. MARKET STATUS")] }),
-            new Paragraph({ children: [new TextRun({ text: "Market Hours: 9:15 AM - 3:30 PM IST", bold: true, font: "Arial" })] }),
-            new Paragraph({ children: [new TextRun({ text: "Check live status before trading", font: "Arial" })] }),
-            new Paragraph({ children: [] }),
-            
-            new Paragraph({ children: [] }),
-            
-            new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun("4. ACTION ITEMS")]}),
-            new Paragraph({ children: [new TextRun({ text: "Today\'s Recommendations:", bold: true, font: "Arial" })] }),
-            new Paragraph({ numbering: { reference: "bullets", level: 0 }, children: [new TextRun({ text: "TMCV: Best performer (+19.8% total). Hold - consider taking partial profits above \u20B9 450", font: "Arial" })] }),
-            new Paragraph({ numbering: { reference: "bullets", level: 0 }, children: [new TextRun({ text: "NXST: Strong recovery (+13.7%). Watch for target achievement", font: "Arial" })] }),
-            new Paragraph({ numbering: { reference: "bullets", level: 0 }, children: [new TextRun({ text: "CAMS: Significant underperformance (-20.2%). Average down opportunity or hold for recovery", font: "Arial" })] }),
-            new Paragraph({ numbering: { reference: "bullets", level: 0 }, children: [new TextRun({ text: "JINDALPHOT: Consider tax loss harvesting (13.6% loss)", font: "Arial" })] }),
-            new Paragraph({ numbering: { reference: "bullets", level: 0 }, children: [new TextRun({ text: "VHL: Underperforming (-11.1%). Monitor for improvement or exit", font: "Arial" })] }),
-            new Paragraph({ numbering: { reference: "bullets", level: 0 }, children: [new TextRun({ text: "ENERGY: Small loss (-0.9%). Hold for long-term", font: "Arial" })] }),
-            new Paragraph({ children: [] }),
-            
-            new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun("5. INTRINSIC VALUE SCREEN")] }),
-            new Paragraph({ children: [new TextRun({ text: "Deep Discount Stocks (Margin of Safety > 25%):", bold: true, font: "Arial" })] }),
-            new Paragraph({ numbering: { reference: "bullets", level: 0 }, children: [new TextRun({ text: "TMCV: Current Rs.432, IV ~Rs.707 (38.9% MoS) - ACCUMULATE", font: "Arial", color: "00B050" })] }),
-            new Paragraph({ children: [] }),
-            new Paragraph({ children: [new TextRun({ text: "Overvalued Stocks:", bold: true, font: "Arial" })] }),
-            new Paragraph({ numbering: { reference: "bullets", level: 0 }, children: [new TextRun({ text: "CAMS, JINDALPHOT, NXST-RR, VHL, ENERGY - Price > Intrinsic Value", font: "Arial", color: "C00000" })] }),
-            new Paragraph({ children: [] }),
-            
-            new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun("6. GTT STATUS")] }),
-            new Paragraph({ children: [new TextRun({ text: "All 6 holdings have active GTT orders. 15 total GTTs active.", bold: true, font: "Arial", color: "00B050" })] }),
-            new Paragraph({ children: [] }),
-
-            new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun("7. MARKET STATUS")] }),
-            new Paragraph({ children: [new TextRun({ text: "Market Hours: 9:15 AM - 3:30 PM IST", bold: true, font: "Arial" })] }),
-            new Paragraph({ children: [new TextRun({ text: "Check live status before trading", font: "Arial" })] }),
-            new Paragraph({ children: [] }),
-            
-            new Paragraph({ children: [] }),
             new Paragraph({ 
                 children: [new TextRun({ text: "DISCLAIMER: This report is for informational purposes only. Not investment advice. Consult a financial advisor before making decisions.", font: "Arial", size: 18, color: "666666", italics: true })],
                 border: { top: { style: BorderStyle.SINGLE, size: 4, color: "CCCCCC", space: 4 } }
@@ -647,14 +444,14 @@ const doc = new Document({
 });
 
 Packer.toBuffer(doc).then(buffer => {
-    const outputPath = `C:/Users/pc/Desktop/kitemcp/reports/${reportDate}_daily_report.docx`;
+    const outputPath = path.join(__dirname, 'reports', `${reportDate}_daily_report.docx`);
     fs.writeFileSync(outputPath, buffer);
-    console.log(`Daily report saved to: ${outputPath}`);
+    console.log(`\n✅ Daily report saved to: ${outputPath}`);
     console.log("\n=== DATA SOURCES USED ===");
-    console.log(`Portfolio: ${portfolioData ? "Loaded from JSON" : "Fallback data"}`);
-    console.log(`Value Screen: ${valueData ? "Loaded from JSON" : "Not found"}`);
-    console.log(`GTT Audit: ${gttData ? "Loaded from JSON" : "Not found"}`);
-    console.log(`Web Opportunities: ${oppData ? "Loaded from JSON" : "Not found"}`);
-    console.log(`News Opportunities: ${newsOppData ? "Loaded from JSON" : "Not found"}`);
-    console.log(`Immediate Actions Generated: ${immediateActions.length}`);
+    console.log(`Portfolio     : ${portfolioData ? "✅ Loaded from JSON" : "⚠️  Fallback data"}`);
+    console.log(`Value Screen  : ${valueData     ? "✅ Loaded from JSON" : "⚠️  Not found"}`);
+    console.log(`GTT Audit     : ${gttData       ? "✅ Loaded from JSON" : "⚠️  Not found"}`);
+    console.log(`Web Opps      : ${oppData       ? "✅ Loaded from JSON" : "⚠️  Not found"}`);
+    console.log(`News Opps     : ${newsOppData   ? "✅ Loaded from JSON" : "⚠️  Not found"}`);
+    console.log(`Immediate Actions: ${immediateActions.length}`);
 });

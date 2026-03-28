@@ -82,7 +82,12 @@ INTRINSIC VALUE SCAN CHECKLIST
           [ ] Check debt levels (D/E < 1.5 = acceptable)
           [ ] Check earnings trend (not consecutive declining quarters)
           [ ] Verify stock type classification is correct
-[ ] 14. Save output → reports/YYYY-MM-DD_value_screen.json
+[ ] 14. Calculate Confidence Score per stock:
+          [ ] 90-100: Live screener.in data + live price = HIGH confidence
+          [ ] 70-89:  Partial data (missing FCF or BVPS) = MEDIUM confidence
+          [ ] < 70:   Use INSUFFICIENT DATA label — do not recommend action
+[ ] 15. Calculate Portfolio Risk Score (see _base.md rules)
+[ ] 16. Save output → reports/YYYY-MM-DD_value_screen.json
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -102,6 +107,9 @@ Use web search to fetch live data from screener.in:
 ```json
 {
   "date": "2026-03-26",
+  "portfolio_risk_score": 42,
+  "portfolio_risk_label": "MEDIUM RISK",
+  "risk_drivers": ["JINDALPHOT down -17% (+10pts)", "VHL down -13% (+10pts)"],
   "stocks": [
     {
       "symbol": "TMCV",
@@ -115,7 +123,9 @@ Use web search to fetch live data from screener.in:
       "intrinsic_value_avg": 707,
       "margin_of_safety": 38.9,
       "status": "DEEP DISCOUNT",
-      "action": "ACCUMULATE"
+      "action": "ACCUMULATE",
+      "confidence_score": 85,
+      "data_quality": "Screener.in live data fetched"
     }
   ],
   "deep_discount_stocks": [

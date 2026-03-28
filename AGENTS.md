@@ -5,6 +5,27 @@
 
 ---
 
+## 🚀 QUICK START — Daily Workflow
+
+```bash
+# Step 1: Open Antigravity / OpenCode in this project folder
+# Step 2: Tell the AI: "Run daily workflow" (it reads this file automatically)
+# Step 3: Once AI has saved JSON files, run:
+
+npm run report     # → reports/YYYY-MM-DD_daily_report.docx
+npm run export     # → reports/Portfolio_YYYY-MM-DD.xlsx
+npm run check      # → Gate status (PASS = safe to trade | FAIL = do NOT trade)
+
+# Or use the master orchestrator:
+npm start          # Prints AI prompt + waits for JSON + auto-runs report+export
+```
+
+> [!IMPORTANT]
+> The AI (Antigravity/OpenCode) generates the JSON data files.
+> Node.js scripts generate the Word report and Excel file from that data.
+
+---
+
 ## 🔁 SESSION START (MANDATORY - READ learnings.md FIRST)
 
 ```
