@@ -84,6 +84,16 @@ or GTT modification is allowed before all gates pass.
 12  All report filenames must include YYYY-MM-DD        T-002     
 13  Close Excel before running report-generator        T-003     
 14  MCP tools may be unavailable — fallback ready     T-004/T-005
+15  Verify GTT trigger direction matches price flow    P-008
+16  ALWAYS verify stock name before analysis           P-009
+17  Use flexible field mapping for JSON schema changes  P-010
+18  JSON output schema must match consumer scripts      P-011
+19  Guard negative EPS — skip Graham if EPS ≤ 0        P-012
+20  GTT stop-loss transaction_type = "SELL" (not BUY)   P-012
+21  Every prompt imports _base.md first (no duplication) P-012
+22  Never hardcode dates in examples (use YYYY-MM-DD)    P-012
+23  Every agent prompt must have error recovery block    P-012
+24  Validate JSON schema before saving to reports/       P-012
  ─────────────────────────────────────────────────────────────────────
 ```
 
@@ -92,13 +102,9 @@ or GTT modification is allowed before all gates pass.
 ---
 
 ### MANDATORY ANALYST CONTEXT
-All agents MUST follow the guidelines in `prompts/stock.yaml`. This file defines:
-- Role: "Highly experienced stock market analyst and portfolio advisor with 15+ years of expertise"
-- Analysis methodology (intrinsic value calculation by stock type)
-- Output format requirements
-- Tone: Professional, analytical, and actionable
+All agents MUST import `prompts/_base.md` first (shared analyst persona, rules, scoring, error recovery). For stock-type-specific valuation methods, see `prompts/stock_framework.md`.
 
-**Key requirements from stock.yaml:**
+**Key requirements (defined in _base.md):**
 - ALWAYS fetch Screener.in data for each stock before analysis
 - ALWAYS calculate intrinsic value and show CMP vs Fair Value comparison
 - Use stock-type specific valuation methods:
@@ -111,8 +117,11 @@ All agents MUST follow the guidelines in `prompts/stock.yaml`. This file defines
 
 ---
 
-### use prompts/stock.yaml as reference and improve prompt daily after all below steps to improve on daily inputs
-and check reports like previously sold 
+### Prompt Review & Improvement
+After completing daily workflow, review and improve prompts in `prompts/` directory based on:
+- Issues encountered during today's execution
+- Reports quality and data accuracy
+- Previously sold stock patterns
 ---
 
 ## AGENT 0 — `opportunity-scanner`

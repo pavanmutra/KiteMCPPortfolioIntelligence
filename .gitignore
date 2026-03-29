@@ -4,6 +4,7 @@ node_modules/
 # Generated reports — large binary files, regenerated daily
 reports/*.docx
 reports/*.xlsx
+reports/archive/
 
 # Sensitive / personal files
 cookies.txt

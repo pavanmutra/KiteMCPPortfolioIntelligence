@@ -249,7 +249,7 @@ const doc = new Document({
             }),
             new Paragraph({ children: [] }),
 
-            new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun("2. HOLDINGS BREAKDOWN")] }),
+            new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun("3. HOLDINGS BREAKDOWN")] }),
             new Table({
                 width: { size: 9360, type: WidthType.DXA },
                 columnWidths: [1100, 800, 1000, 1100, 1400, 1100, 1260],
@@ -279,7 +279,7 @@ const doc = new Document({
             }),
             new Paragraph({ children: [] }),
 
-            new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun("3. DEEP DISCOUNT STOCKS")] }),
+            new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun("4. DEEP DISCOUNT STOCKS")] }),
             new Paragraph({ children: [new TextRun({ text: "Stocks with Margin of Safety > 25% (Undervalued)", bold: true, font: "Arial" })] }),
             new Paragraph({ children: [] }),
             ...(deepDiscountStocks.length > 0 ? [
@@ -310,7 +310,7 @@ const doc = new Document({
             ]),
             new Paragraph({ children: [] }),
 
-            new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun("4. OVERVALUED STOCKS")] }),
+            new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun("5. OVERVALUED STOCKS")] }),
             new Paragraph({ children: [new TextRun({ text: "Stocks trading above intrinsic value", bold: true, font: "Arial" })] }),
             new Paragraph({ children: [] }),
             ...(overvaluedStocks.length > 0 ? [
@@ -339,7 +339,7 @@ const doc = new Document({
 
             new Paragraph({ children: [] }),
 
-            new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun("4. COMMODITY MARKET REVIEW")] }),
+            new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun("6. COMMODITY MARKET REVIEW")] }),
             new Paragraph({ children: [new TextRun({ text: "Latest status of MCX commodities", bold: true, font: "Arial" })] }),
             new Paragraph({ children: [] }),
             ...(commodities.length > 0 ? [
@@ -368,7 +368,7 @@ const doc = new Document({
             ]),
             new Paragraph({ children: [] }),
 
-            new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun("5. GTT PROTECTION STATUS")] }),
+            new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun("7. GTT PROTECTION STATUS")] }),
             new Paragraph({ children: [new TextRun({ 
                 text: `${activeGTTs} active GTT orders | ${protectedHoldings} holdings protected`, 
                 bold: true, 
@@ -380,7 +380,7 @@ const doc = new Document({
             ] : []),
             new Paragraph({ children: [] }),
 
-            new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun("6. INVESTMENT OPPORTUNITIES")]}),
+            new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun("8. INVESTMENT OPPORTUNITIES")]}),
             new Paragraph({ heading: HeadingLevel.HEADING_2, children: [new TextRun("Web-Scanned Opportunities")]}),
             ...(opportunities.length > 0 ? [
                 new Table({
@@ -438,7 +438,7 @@ const doc = new Document({
             ]),
             new Paragraph({ children: [] }),
 
-            new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun("7. ACTION ITEMS")]}),
+            new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun("9. ACTION ITEMS")]}),
             new Paragraph({ children: [new TextRun({ text: "Today's Recommended Actions:", bold: true, font: "Arial" })] }),
             ...(deepDiscountStocks.length > 0 ? [
                 new Paragraph({ numbering: { reference: "numbers", level: 0 }, children: [new TextRun({ text: "Deep discount stocks available - consider ACCUMULATE on dips", font: "Arial", color: "00B050" })] })
@@ -450,7 +450,7 @@ const doc = new Document({
             new Paragraph({ numbering: { reference: "numbers", level: 0 }, children: [new TextRun({ text: "Review opportunities before making new purchases", font: "Arial" })] }),
             new Paragraph({ children: [] }),
 
-            new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun("8. MARKET STATUS")] }),
+            new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun("10. MARKET STATUS")] }),
             new Paragraph({ children: [new TextRun({ text: "Market Hours: 9:15 AM - 3:30 PM IST", bold: true, font: "Arial" })] }),
             new Paragraph({ children: [new TextRun({ text: "Check live status before trading", font: "Arial" })] }),
             new Paragraph({ children: [] }),
@@ -465,7 +465,7 @@ const doc = new Document({
 });
 
 Packer.toBuffer(doc).then(buffer => {
-    const outputPath = path.join(__dirname, 'reports', `${reportDate}_daily_report_v2.docx`);
+    const outputPath = path.join(__dirname, 'reports', `${reportDate}_daily_report.docx`);
     
     // Check if Excel file is open (would cause write failure)
     const excelPath = path.join(__dirname, 'reports', `Portfolio_${reportDate}.xlsx`);

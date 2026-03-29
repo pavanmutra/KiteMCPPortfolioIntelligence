@@ -1,5 +1,7 @@
 const { Workbook } = require('exceljs');
-const fs = require('fs');
+const { readJsonFile } = require('./lib/jsonUtils');
+const fs   = require('fs');
+const path = require('path');
 
 const today = new Date();
 const weekEnd = today.toISOString().split('T')[0];
@@ -7,24 +9,33 @@ const weekStart = new Date(today);
 weekStart.setDate(today.getDate() - 7);
 const weekStartStr = weekStart.toISOString().split('T')[0];
 
-const reportDate = weekEnd.replace(/-/g, '-');
-const weekStartDate = weekStartStr.replace(/-/g, '-');
+const reportDate = weekEnd;
+const weekStartDate = weekStartStr;
 
-function readJsonFile(filepath) {
-    try {
-        if (fs.existsSync(filepath)) {
-            return JSON.parse(fs.readFileSync(filepath, 'utf8'));
-        }
-    } catch (e) {
-        console.log(`Warning: Could not read ${filepath}`);
-    }
+/**
+ * Find a report file — check reports/ first, then archive/YYYY-MM-DD/
+ * This ensures weekly comparisons work even after archiving.
+ */
+function findReport(date, filename) {
+    // Check today's reports root first
+    const rootPath = path.join('reports', `${date}_${filename}`);
+    if (fs.existsSync(rootPath)) return readJsonFile(rootPath);
+
+    // Check archive/YYYY-MM-DD/ folder (date prefix stripped)
+    const archivePath = path.join('reports', 'archive', date, filename);
+    if (fs.existsSync(archivePath)) return readJsonFile(archivePath);
+
+    // Check archive with date prefix (in case not stripped)
+    const archiveWithDate = path.join('reports', 'archive', date, `${date}_${filename}`);
+    if (fs.existsSync(archiveWithDate)) return readJsonFile(archiveWithDate);
+
     return null;
 }
 
-const currentPortfolio = readJsonFile(`reports/${reportDate}_portfolio_snapshot.json`);
-const lastWeekPortfolio = readJsonFile(`reports/${weekStartDate}_portfolio_snapshot.json`);
-const valueData = readJsonFile(`reports/${reportDate}_value_screen.json`);
-const commodityData = readJsonFile(`reports/${reportDate}_commodity_opportunities.json`);
+const currentPortfolio  = findReport(reportDate, 'portfolio_snapshot.json');
+const lastWeekPortfolio = findReport(weekStartDate, 'portfolio_snapshot.json');
+const valueData         = findReport(reportDate, 'value_screen.json');
+const commodityData     = findReport(reportDate, 'commodity_opportunities.json');
 
 const rawHoldings = currentPortfolio?.holdings || [
     { symbol: "TMCV", quantity: 110, average_price: 355.37, last_price: 431.85, pnl: 8412.26, pnl_percent: 21.53 },
@@ -128,7 +139,9 @@ holdings.forEach(h => {
     });
 });
 
-const performanceSheet = wb.addSheet('Performance');
+const performanceSheet = wb.addWorksheet('Performance', {
+    properties: { tabColor: { argb: '2E7D32' } }
+});
 
 performanceSheet.columns = [
     { header: 'Stock', key: 'stock', width: 12 },
@@ -178,7 +191,7 @@ commodities.forEach(c => {
     });
 });
 
-const outputPath = `C:/Users/pc/Desktop/kitemcp/reports/Weekly_Portfolio_${reportDate}.xlsx`;
+const outputPath = path.join(__dirname, 'reports', `Weekly_Portfolio_${reportDate}.xlsx`);
 wb.xlsx.writeFile(outputPath).then(() => {
     console.log(`Weekly Portfolio Excel saved to: ${outputPath}`);
     console.log('\n=== WEEKLY SUMMARY ===');

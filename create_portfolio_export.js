@@ -350,7 +350,7 @@ weeklySheet.addRow({ metric: 'New Positions', this_week: 0, change: '' });
 weeklySheet.addRow({ metric: 'Closed Positions', this_week: 0, change: '' });
 weeklySheet.addRow({ metric: 'Expected Dividend Income', this_week: Math.round(totalDividend), change: '' });
 
-const excelOutputPath = `reports/Portfolio_${reportDate}_v2.xlsx`;
+const excelOutputPath = `reports/Portfolio_${reportDate}.xlsx`;
 
 // Check if Excel file is open - if so, use timestamp variant
 let finalPath = excelOutputPath;
