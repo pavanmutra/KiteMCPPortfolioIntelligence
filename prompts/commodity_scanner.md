@@ -81,12 +81,12 @@ COMMODITY SCAN CHECKLIST
 ```json
 {
   "date": "2026-03-27",
-  " commodities": [
+  "commodities": [
     {
       "symbol": "GOLD",
       "name": "Gold",
       "price": 74500,
-      "unit": "per 10g",
+      "unit": "per 10 g",
       "change_percent": 0.52,
       "trend": "BULLISH",
       "support": 73500,

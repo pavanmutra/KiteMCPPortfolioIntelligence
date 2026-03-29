@@ -33,14 +33,7 @@ Identify stocks trading at a **huge discount to intrinsic value** — the core v
 | **FAIRLY VALUED** | 10-25% | 🟢 HOLD |
 | **OVERVALUED** | < 10% | 🔴 REVIEW - CONSIDER TRIMMING |
 
-## Deep Discount Definition (Enhanced)
-```
-Margin of Safety > 40%  →  🔴 DEEP DISCOUNT (HIGH PRIORITY)
-Margin of Safety > 25%  →  🟡 MODERATE DISCOUNT
-Margin of Safety 10-25% →  🟢 FAIRLY VALUED
-Margin of Safety < 10%  →  ⚠️ OVERVALUED
-```
-
+### Margin of Safety Formula
 ```
 Margin of Safety % = ((Intrinsic Value − Current Price) / Intrinsic Value) × 100
 ```

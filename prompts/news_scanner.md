@@ -70,7 +70,7 @@ NEWS SCAN CHECKLIST
 ### 4. Regulatory Change
 - **Signal**: SEBI circular, RBI policy, sector regulation
 - **Action**: Assess sector impact, identify winners/losers
-- - Search: "SEBI circular [topic] 2026" or "RBI policy [sector]"
+- **Search**: "SEBI circular [topic] 2026" or "RBI policy [sector]"
 
 ### 5. Bulk/Block Deal
 - **Signal**: Large institutional transaction
@@ -127,6 +127,24 @@ Recommendation  : HOLD (already priced in)
 - **portfolio-scanner**: Flag holdings with news alerts
 - **intrinsic-value-scanner**: Use news to update IV assumptions
 - **report-generator**: Include news section in daily report
+
+## Output Format (JSON - matches code expectations)
+```json
+{
+  "date": "2026-03-27",
+  "news": [
+    {
+      "source": "MoneyControl",
+      "headline": "Reliance Q3 PAT beats estimates by 15%",
+      "impact": 7,
+      "type": "EARNINGS",
+      "action": "HOLD (already priced in)",
+      "symbol": "RELIANCE",
+      "sentiment": "BULLISH"
+    }
+  ]
+}
+```
 
 ## Save Output
 Save to: `reports/YYYY-MM-DD_news_opportunities.json`

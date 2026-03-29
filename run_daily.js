@@ -15,10 +15,12 @@
 const { execSync, spawn } = require('child_process');
 const fs   = require('fs');
 const path = require('path');
+const config = require('./lib/config');
 
 const TODAY       = new Date().toISOString().split('T')[0];
 const REPORTS_DIR = path.join(__dirname, 'reports');
-const POLL_MS     = 5000; // check every 5 seconds
+const POLL_MS     = config.gates.pollIntervalMs;
+const TIMEOUT_MS  = config.gates.timeoutMs;
 
 // Colours
 const G = '\x1b[32m', R = '\x1b[31m', Y = '\x1b[33m', B = '\x1b[34m', X = '\x1b[0m', BOLD = '\x1b[1m';
@@ -81,7 +83,7 @@ function runScript(scriptName) {
     const output = execSync(`node "${path.join(__dirname, scriptName)}"`, {
       cwd: __dirname,
       encoding: 'utf8',
-      timeout: 60000
+      timeout: config.gates.scriptTimeoutMs
     });
     console.log(output);
     return true;
@@ -157,10 +159,11 @@ const interval = setInterval(() => {
   }
 }, POLL_MS);
 
-// Timeout after 2 hours
+// Timeout from config
 setTimeout(() => {
   clearInterval(interval);
-  console.log(`\n${R}⏱ Timeout: AI agents did not complete within 2 hours.${X}`);
+  const hours = TIMEOUT_MS / (60 * 60 * 1000);
+  console.log(`\n${R}⏱ Timeout: AI agents did not complete within ${hours} hours.${X}`);
   console.log(`${Y}   Run 'npm run report' manually after completing AI steps.${X}\n`);
   process.exit(1);
-}, 2 * 60 * 60 * 1000);
+}, TIMEOUT_MS);

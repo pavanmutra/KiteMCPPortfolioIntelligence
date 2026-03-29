@@ -1,26 +1,20 @@
 const { Workbook } = require('exceljs');
+const { readJsonFile, isFileAccessible, ensureDir } = require('./lib/jsonUtils');
+const config = require('./lib/config');
 const fs   = require('fs');
 const path = require('path');
 
 const today      = new Date().toISOString().split('T')[0];
 const reportDate = today;
 
-function readJsonFile(filepath) {
-    try {
-        if (fs.existsSync(filepath)) {
-            return JSON.parse(fs.readFileSync(filepath, 'utf8'));
-        }
-    } catch (e) {
-        console.log(`Warning: Could not read ${filepath}`);
-    }
-    return null;
-}
-
 const portfolioData  = readJsonFile(`reports/${reportDate}_portfolio_snapshot.json`);
 const valueData      = readJsonFile(`reports/${reportDate}_value_screen.json`);
 const commodityData  = readJsonFile(`reports/${reportDate}_commodity_opportunities.json`);
 const oppData        = readJsonFile(`reports/${reportDate}_opportunities.json`);
-const newsOppData    = readJsonFile(`reports/${reportDate}_news_opportunities.json`);
+const newsOppData    = readJsonFile(`reports/${reportDate}_news_opportunities.json`) || {};
+
+// Support both 'news' and 'opportunities' keys in news_opportunities.json
+const newsData = newsOppData?.news || newsOppData?.opportunities || [];
 
 // Build IV lookup map: symbol → { margin_of_safety, action, graham_number }
 const ivMap = {};
@@ -31,16 +25,17 @@ const ivMap = {};
  * Falls back to P&L heuristic if IV data not available for the symbol.
  */
 function getExportAction(symbol, pnl_percent) {
+    const r = config.risk;
     const iv = ivMap[symbol];
     if (iv) {
-        if (iv.margin_of_safety > 40)  return 'STRONG ACCUMULATE';
-        if (iv.margin_of_safety > 25)  return 'ACCUMULATE ON DIPS';
-        if (iv.margin_of_safety < -15) return 'TRIM / EXIT';
+        if (iv.margin_of_safety > r.deepDiscountMos)  return 'STRONG ACCUMULATE';
+        if (iv.margin_of_safety > r.moderateDiscountMos)  return 'ACCUMULATE ON DIPS';
+        if (iv.margin_of_safety < r.overvaluedMos) return 'TRIM / EXIT';
         return 'HOLD';
     }
     // Fallback: use P&L with tax-loss harvest flag
-    if (pnl_percent < -15) return 'TAX LOSS HARVEST';
-    if (pnl_percent < -10) return 'REVIEW';
+    if (pnl_percent < r.largeLossThreshold) return 'TAX LOSS HARVEST';
+    if (pnl_percent < r.taxLossHarvestThreshold) return 'REVIEW';
     return 'HOLD';
 }
 
@@ -59,14 +54,7 @@ function getTaxCategory(h) {
     return days >= 365 ? 'LONG-TERM (LTCG 10%)' : 'SHORT-TERM (STCG 15%)';
 }
 
-const rawHoldings = portfolioData?.holdings || [
-    { symbol: "TMCV",       quantity: 110,  average_price: 355.37,  last_price: 431.85, pnl: 8412.26,  pnl_percent: 21.53, dividend_yield: 0.5, holding_period_days: 380 },
-    { symbol: "NXST-RR",   quantity: 650,  average_price: 135.19,  last_price: 155.52, pnl: 13217.14, pnl_percent: 14.4,  dividend_yield: 6.2, holding_period_days: 290 },
-    { symbol: "JINDALPHOT",quantity: 85,   average_price: 1320.71, last_price: 1141.4, pnl: -15241,   pnl_percent: -13.6, dividend_yield: 0.8, holding_period_days: 210 },
-    { symbol: "VHL",        quantity: 35,   average_price: 3608.39, last_price: 3148.2, pnl: -16107,   pnl_percent: -12.8, dividend_yield: 1.2, holding_period_days: 195 },
-    { symbol: "CAMS",       quantity: 228,  average_price: 713.99,  last_price: 644.20, pnl: -15912,   pnl_percent: -9.8,  dividend_yield: 1.5, holding_period_days: 420 },
-    { symbol: "ENERGY",     quantity: 2571, average_price: 36.08,   last_price: 35.71,  pnl: -955,     pnl_percent: -1.0,  dividend_yield: 0.0, holding_period_days: 150 }
-];
+const rawHoldings = portfolioData?.holdings || config.export.defaultHoldings;
 
 const holdings = rawHoldings.map(h => ({
     symbol:        h.symbol,
@@ -84,12 +72,10 @@ const holdings = rawHoldings.map(h => ({
     intrinsic_value:  ivMap[h.symbol]?.graham_number ?? null,
 }));
 
-const commodities = commodityData?.commodities || [
-    { symbol: "GOLD", price: 74500, change_percent: 0.52, trend: "BULLISH", recommendation: "HOLD" },
-    { symbol: "SILVER", price: 89500, change_percent: -0.32, trend: "NEUTRAL", recommendation: "WATCH" },
-    { symbol: "CRUDE", price: 5200, change_percent: 1.25, trend: "BULLISH", recommendation: "BUY ON DIP" },
-    { symbol: "NATURALGAS", price: 180, change_percent: -2.15, trend: "BEARISH", recommendation: "SELL" }
-];
+const rawCommodities = commodityData?.commodities || config.export.commodityDefaults;
+const commodities = Array.isArray(rawCommodities)
+    ? rawCommodities
+    : Object.entries(rawCommodities).map(([symbol, c]) => ({ symbol: symbol.toUpperCase(), ...c }));
 
 const wb = new Workbook();
 wb.creator = 'KiteMCP Portfolio Intelligence';
@@ -121,6 +107,9 @@ holdingsSheet.getRow(1).alignment = { horizontal: 'center' };
 
 holdings.forEach(h => {
     const action = getExportAction(h.symbol, h.pnl_percent);
+    const ivValue = h.intrinsic_value != null ? Math.round(h.intrinsic_value) : null;
+    const mosValue = h.margin_of_safety != null ? parseFloat(h.margin_of_safety.toFixed(1)) : null;
+    
     const row = holdingsSheet.addRow({
         symbol:           h.symbol,
         quantity:         h.quantity,
@@ -130,8 +119,8 @@ holdings.forEach(h => {
         current_value:    Math.round(h.current_value),
         pnl:              Math.round(h.pnl),
         pnl_percent:      parseFloat(h.pnl_percent.toFixed(1)),
-        intrinsic_value:  h.intrinsic_value ? Math.round(h.intrinsic_value) : 'N/A',
-        margin_of_safety: h.margin_of_safety != null ? parseFloat(h.margin_of_safety.toFixed(1)) : 'N/A',
+        intrinsic_value:  ivValue !== null ? ivValue : 'N/A',
+        margin_of_safety: mosValue !== null ? mosValue : 'N/A',
         dividend_yield:   parseFloat(h.dividend_yield.toFixed(1)),
         tax_category:     h.tax_category,
         action:           action
@@ -286,7 +275,7 @@ commodities.forEach(c => {
     commoditySheet.addRow({
         symbol: c.symbol,
         price: c.price,
-        change_percent: parseFloat(c.change_percent.toFixed(2)),
+        change_percent: (c.change_percent != null && !isNaN(c.change_percent)) ? parseFloat(c.change_percent.toFixed(2)) : null,
         trend: c.trend,
         recommendation: c.recommendation
     });
@@ -303,7 +292,7 @@ const marketSheet = wb.addWorksheet('Market Intelligence', {
 marketSheet.addRow(['COMMODITY MARKET STATUS']).font = { bold: true, size: 14 };
 marketSheet.addRow(['Name', 'Price', 'Trend', 'Action']);
 commodities.forEach(c => {
-    marketSheet.addRow([c.symbol || c.name, c.price, c.trend, c.recommendation || c.action]);
+    marketSheet.addRow([c.symbol || c.name, c.price ?? 'N/A', c.trend, c.recommendation || c.action]);
 });
 marketSheet.addRow([]);
 
@@ -318,7 +307,7 @@ marketSheet.addRow([]);
 // NEWS SUB-SECTION
 marketSheet.addRow(['FINANCIAL NEWS SCANNER']).font = { bold: true, size: 14 };
 marketSheet.addRow(['Source', 'Headline', 'Impact Score', 'Type', 'Action']);
-(newsOppData?.news || []).forEach(n => {
+newsData.forEach(n => {
     marketSheet.addRow([n.source, n.headline, n.impact, n.type, n.action]);
 });
 
@@ -349,9 +338,35 @@ weeklySheet.addRow({ metric: 'New Positions', this_week: 0, change: '' });
 weeklySheet.addRow({ metric: 'Closed Positions', this_week: 0, change: '' });
 weeklySheet.addRow({ metric: 'Expected Dividend Income', this_week: Math.round(totalDividend), change: '' });
 
-const outputPath = path.join(__dirname, 'reports', `Portfolio_${reportDate}.xlsx`);
-wb.xlsx.writeFile(outputPath).then(() => {
-    console.log(`Portfolio Excel saved to: ${outputPath}`);
+const excelOutputPath = `reports/Portfolio_${reportDate}_v2.xlsx`;
+
+// Check if Excel file is open - if so, use timestamp variant
+let finalPath = excelOutputPath;
+if (!isFileAccessible(excelOutputPath)) {
+    const timestamp = Date.now();
+    finalPath = `reports/Portfolio_${reportDate}_${timestamp}.xlsx`;
+    console.log(`\n⚠️  Original file open - using: ${finalPath}`);
+}
+
+async function saveExcel() {
+    try {
+        await wb.xlsx.writeFile(finalPath);
+        return finalPath;
+    } catch (err) {
+        if (err.code === 'EBUSY') {
+            const timestamp = Date.now();
+            finalPath = `reports/Portfolio_${reportDate}_${timestamp}.xlsx`;
+            console.log(`\n⚠️  File busy - saving as: ${finalPath}`);
+            await wb.xlsx.writeFile(finalPath);
+            return finalPath;
+        }
+        throw err;
+    }
+}
+
+saveExcel()
+    .then((savedPath) => {
+        console.log(`\nPortfolio Excel saved to: ${path.resolve(savedPath)}`);
     console.log('\n=== SHEETS GENERATED ===');
     console.log('1. Holdings - Portfolio positions with P&L');
     console.log('2. Tax Summary - Unrealized gains & tax-loss harvesting');

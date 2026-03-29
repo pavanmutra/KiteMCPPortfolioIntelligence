@@ -66,14 +66,14 @@ The report generator MUST read data from these JSON files in the `reports/` fold
 ```json
 {
   "date": "2026-03-26",
-  "opportunities": [
+  "news": [
     { 
       "symbol": "HDFCBANK", 
       "type": "CORPORATE_ACTION", 
       "headline": "HDFC Bank announces 1:1 bonus",
-      "impact_score": 6,
+      "impact": 6,
       "sentiment": "BULLISH",
-      "recommendation": "ACCUMULATE"
+      "action": "ACCUMULATE"
     }
   ]
 }

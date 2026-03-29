@@ -7,6 +7,11 @@
     "start": "node run_daily.js",
     "report": "node create_daily_report.js",
     "export": "node create_portfolio_export.js",
+    "scan": "node scan_opportunities.js",
+    "login": "node kite_login.js",
+    "login:status": "node kite_login.js status",
+    "login:open": "node kite_login.js open",
+    "all": "node scan_opportunities.js && node create_daily_report.js && node create_portfolio_export.js",
     "export:weekly": "node create_weekly_export.js",
     "deep-discount": "node create_deep_discount_report.js",
     "check": "node check_gates.js"

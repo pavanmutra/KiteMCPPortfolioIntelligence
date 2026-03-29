@@ -8,9 +8,11 @@
 
 const fs = require('fs');
 const path = require('path');
+const config = require('./lib/config');
 
 const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
 const reportsDir = path.join(__dirname, 'reports');
+const staleThreshold = config.gates.staleThresholdMinutes;
 
 const GATES = [
   {
@@ -97,7 +99,7 @@ let warnings  = 0;
 for (const g of GATES) {
   const exists = fs.existsSync(g.file);
   const age    = exists ? fileAgeMinutes(g.file) : null;
-  const stale  = age !== null && age > 240; // older than 4 hours
+  const stale  = age !== null && age > staleThreshold;
 
   if (exists && !stale) {
     console.log(`${GREEN}✅ ${g.gate}${RESET}  ${g.label}  ${BLUE}(${age}m ago)${RESET}`);

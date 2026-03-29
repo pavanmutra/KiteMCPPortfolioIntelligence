@@ -44,6 +44,15 @@ If ANY item is unchecked → DO NOT PLACE ORDER
 10. **No overtrading.** Max 2 new position changes per session. (R-13)
 11. **NEVER place trades automatically.** Always wait for explicit user confirmation. (R-12)
 
+## Rules Reference
+| Rule | Description | Threshold |
+|------|-------------|------------|
+| R-09 | Confidence Score required for action | ≥ 70 |
+| R-10 | Single stock weight limit | ≤ 25% of portfolio |
+| R-11 | Single sector weight limit | ≤ 40% of portfolio |
+| R-12 | Manual confirmation required | Never auto-trade |
+| R-13 | Max position changes per session | ≤ 2 |
+
 ## Position Sizing Formula
 Before every BUY, calculate and state the suggested position size:
 ```

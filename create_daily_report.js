@@ -1,24 +1,14 @@
 const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, 
         HeadingLevel, AlignmentType, BorderStyle, WidthType, ShadingType,
         Header, Footer, PageNumber } = require('docx');
+const { readJsonFile, isFileAccessible } = require('./lib/jsonUtils');
+const config = require('./lib/config');
 const fs   = require('fs');
 const path = require('path');
 
 // Get today's date
 const today = new Date().toISOString().split('T')[0];
-const reportDate = today.replace(/-/g, '-');
-
-// Helper function to safely read JSON file
-function readJsonFile(filepath) {
-    try {
-        if (fs.existsSync(filepath)) {
-            return JSON.parse(fs.readFileSync(filepath, 'utf8'));
-        }
-    } catch (e) {
-        console.log(`Warning: Could not read ${filepath}`);
-    }
-    return null;
-}
+const reportDate = today;
 
 // Load all data from JSON files
 const portfolioData = readJsonFile(`reports/${reportDate}_portfolio_snapshot.json`);
@@ -45,8 +35,9 @@ if (gttData?.unprotected_holdings?.length > 0) {
 }
 
 // From Value Screen - Deep discount alerts (MoS > 40%)
-if (valueData?.stocks) {
-    valueData.stocks.filter(s => s.margin_of_safety > 40).forEach(stock => {
+const stocksArray = valueData?.stocks || [];
+if (stocksArray.length > 0) {
+    stocksArray.filter(s => s.margin_of_safety > 40).forEach(stock => {
         immediateActions.push({
             type: "DEEP_DISCOUNT_ALERT",
             symbol: stock.symbol,
@@ -57,7 +48,7 @@ if (valueData?.stocks) {
     });
     
     // From Value Screen - Overvalued
-    valueData.stocks.filter(s => s.margin_of_safety < -15).forEach(stock => {
+    stocksArray.filter(s => s.margin_of_safety < -15).forEach(stock => {
         const premium = Math.abs(stock.margin_of_safety).toFixed(1);
         immediateActions.push({
             type: "OVERVALUED",
@@ -72,21 +63,14 @@ if (valueData?.stocks) {
 // NOTE: Large-loss check against holdings runs after holdings is declared below.
 // See immediateActionsFromHoldings() called after holdings is initialized.
 
-// Get news opportunities
-const newsOpportunities = newsOppData?.news || [];
+// Get news opportunities (support both 'news' and 'opportunities' keys)
+const newsOpportunities = newsOppData?.news || newsOppData?.opportunities || [];
 
 // Get commodity data
 const commodities = commData?.commodities || [];
 
 // Use loaded data or fallback to defaults - map JSON keys to internal format
-const rawHoldings = portfolioData?.holdings || [
-    { symbol: "CAMS",       quantity: 228,  average_price: 713.99,  last_price: 644.20,  pnl: -15912.05 },
-    { symbol: "ENERGY",     quantity: 2571, average_price: 36.08,   last_price: 35.71,   pnl: -955.87   },
-    { symbol: "JINDALPHOT", quantity: 85,   average_price: 1320.71, last_price: 1096.30, pnl: -19074.90 },
-    { symbol: "NXST-RR",    quantity: 650,  average_price: 135.19,  last_price: 155.52,  pnl: 13217.14  },
-    { symbol: "TMCV",       quantity: 110,  average_price: 355.37,  last_price: 431.85,  pnl: 8412.26   },
-    { symbol: "VHL",        quantity: 35,   average_price: 3608.39, last_price: 3143.40, pnl: -16274.50 }
-];
+const rawHoldings = portfolioData?.holdings || config.portfolio.defaultHoldings;
 
 // Normalize holding data - handle different JSON key formats
 const holdings = rawHoldings.map(h => ({
@@ -101,7 +85,7 @@ const totalValue    = holdings.reduce((sum, h) => sum + (h.qty * h.last), 0);
 const totalInvested = holdings.reduce((sum, h) => sum + (h.qty * h.avg), 0);
 const totalPnl      = holdings.reduce((sum, h) => sum + h.pnl, 0);
 const totalPnlPct   = (totalPnl / totalInvested * 100);
-const availableMargin = portfolioData?.available_margin || 1999661.80;
+const availableMargin = portfolioData?.available_margin || config.portfolio.defaultAvailableMargin;
 
 // Now that holdings is declared, add large-loss immediate actions
 holdings.filter(h => (h.pnl / (h.qty * h.avg) * 100) < -15).forEach(h => {
@@ -189,20 +173,20 @@ const doc = new Document({
     sections: [{
         properties: {
             page: {
-                size: { width: 12240, height: 15840 },
-                margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 }
+                size: { width: config.document.pageWidth, height: config.document.pageHeight },
+                margin: config.document.margin
             }
         },
         headers: {
             default: new Header({ children: [new Paragraph({ 
-                children: [new TextRun({ text: "KITE DAILY PORTFOLIO REPORT", bold: true, color: "1F4E79", font: "Arial" })],
+                children: [new TextRun({ text: "KITE DAILY PORTFOLIO REPORT", bold: true, color: "1F4E79", font: config.document.font })],
                 border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: "1F4E79", space: 1 } }
             })] })
         },
         footers: {
             default: new Footer({ children: [new Paragraph({ 
                 alignment: AlignmentType.CENTER,
-                children: [new TextRun({ text: "Page ", font: "Arial", size: 20 }), new TextRun({ children: [PageNumber.CURRENT], font: "Arial", size: 20 })]
+                children: [new TextRun({ text: "Page ", font: config.document.font, size: 20 }), new TextRun({ children: [PageNumber.CURRENT], font: config.document.font, size: 20 })]
             })] })
         },
         children: [
@@ -481,7 +465,14 @@ const doc = new Document({
 });
 
 Packer.toBuffer(doc).then(buffer => {
-    const outputPath = path.join(__dirname, 'reports', `${reportDate}_daily_report.docx`);
+    const outputPath = path.join(__dirname, 'reports', `${reportDate}_daily_report_v2.docx`);
+    
+    // Check if Excel file is open (would cause write failure)
+    const excelPath = path.join(__dirname, 'reports', `Portfolio_${reportDate}.xlsx`);
+    if (fs.existsSync(excelPath) && !isFileAccessible(excelPath)) {
+        console.log(`\n⚠️  Warning: Excel file may be open. Please close Portfolio_${reportDate}.xlsx before overwriting.`);
+    }
+    
     fs.writeFileSync(outputPath, buffer);
     console.log(`\n✅ Daily report saved to: ${outputPath}`);
     console.log("\n=== DATA SOURCES USED ===");
