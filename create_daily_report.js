@@ -35,7 +35,8 @@ if (gttData?.unprotected_holdings?.length > 0) {
 }
 
 // From Value Screen - Deep discount alerts (MoS > 40%)
-const stocksArray = valueData?.stocks || [];
+// Handle both 'stocks' and 'valuations' keys
+const stocksArray = valueData?.stocks || valueData?.valuations || [];
 if (stocksArray.length > 0) {
     stocksArray.filter(s => s.margin_of_safety > 40).forEach(stock => {
         immediateActions.push({
@@ -100,8 +101,8 @@ holdings.filter(h => (h.pnl / (h.qty * h.avg) * 100) < -15).forEach(h => {
 });
 
 // Get deep discount stocks from value screen
-const deepDiscountStocks = valueData?.stocks?.filter(s => s.margin_of_safety > 25) || [];
-const overvaluedStocks = valueData?.stocks?.filter(s => s.margin_of_safety < 0) || [];
+const deepDiscountStocks = stocksArray.filter(s => s.margin_of_safety > 25);
+const overvaluedStocks = stocksArray.filter(s => s.margin_of_safety < 0);
 
 // Get GTT info
 const activeGTTs = gttData?.active_gtts?.length || 0;
@@ -112,7 +113,7 @@ const opportunities = oppData?.opportunities || [];
 
 // Action mapping based on value screen
 const getAction = (symbol) => {
-    const stock = valueData?.stocks?.find(s => s.symbol === symbol);
+    const stock = stocksArray.find(s => s.symbol === symbol);
     if (stock?.margin_of_safety > 25) return "ACCUMULATE";
     if (stock?.margin_of_safety < -50) return "TRIM/EXIT";
     return "HOLD";

@@ -187,8 +187,21 @@ for (const date of dates) {
                 const base = path.basename(cleanName, ext);
                 finalDst = path.join(dateDir, `${base}_dup${ext}`);
             }
-            fs.renameSync(src, finalDst);
-            console.log(`  ${G}✓${X} ${file}  →  archive/${date}/${path.basename(finalDst)}`);
+            
+            // For markdown/docx/xlsx files, also copy to readable/ subfolder
+            if (cleanName.endsWith('.md') || cleanName.endsWith('.docx') || cleanName.endsWith('.xlsx')) {
+                const readableDir = path.join(dateDir, 'readable');
+                if (!fs.existsSync(readableDir)) {
+                    fs.mkdirSync(readableDir, { recursive: true });
+                }
+                const mdDst = path.join(readableDir, cleanName);
+                fs.copyFileSync(src, mdDst);
+                console.log(`  ${G}✓${X} ${file}  →  archive/${date}/${path.basename(finalDst)}`);
+                console.log(`  ${G}✓${X} ${file}  →  archive/${date}/readable/${cleanName} (copy)`);
+            } else {
+                fs.renameSync(src, finalDst);
+                console.log(`  ${G}✓${X} ${file}  →  archive/${date}/${path.basename(finalDst)}`);
+            }
         }
         movedCount++;
     }
@@ -216,8 +229,21 @@ if (archiveLoose.length > 0) {
                 const base = path.basename(cleanName, ext);
                 finalDst = path.join(targetDir, `${base}_dup${ext}`);
             }
-            fs.renameSync(src, finalDst);
-            console.log(`  ${G}✓${X} ${file}  →  archive/${date}/${path.basename(finalDst)}`);
+            
+            // For markdown/docx/xlsx files, also copy to readable/ subfolder
+            if (cleanName.endsWith('.md') || cleanName.endsWith('.docx') || cleanName.endsWith('.xlsx')) {
+                const readableDir = path.join(targetDir, 'readable');
+                if (!fs.existsSync(readableDir)) {
+                    fs.mkdirSync(readableDir, { recursive: true });
+                }
+                const mdDst = path.join(readableDir, cleanName);
+                fs.copyFileSync(src, mdDst);
+                console.log(`  ${G}✓${X} ${file}  →  archive/${date}/${path.basename(finalDst)}`);
+                console.log(`  ${G}✓${X} ${file}  →  archive/${date}/readable/${cleanName} (copy)`);
+            } else {
+                fs.renameSync(src, finalDst);
+                console.log(`  ${G}✓${X} ${file}  →  archive/${date}/${path.basename(finalDst)}`);
+            }
         }
         movedCount++;
     }

@@ -17,8 +17,10 @@ const newsOppData    = readJsonFile(`reports/${reportDate}_news_opportunities.js
 const newsData = newsOppData?.news || newsOppData?.opportunities || [];
 
 // Build IV lookup map: symbol → { margin_of_safety, action, graham_number }
+// Handle both 'stocks' and 'valuations' keys
 const ivMap = {};
-(valueData?.stocks || []).forEach(s => { ivMap[s.symbol] = s; });
+const ivArray = valueData?.stocks || valueData?.valuations || [];
+ivArray.forEach(s => { ivMap[s.symbol] = s; });
 
 /**
  * Derive action from IV screen (MoS-based) — preferred over P&L-based.

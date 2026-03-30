@@ -8,6 +8,7 @@
     "report": "node create_daily_report.js",
     "report:individual": "node create_individual_reports.js",
     "report:all": "node create_daily_report.js && node create_individual_reports.js",
+    "report:readable": "node create_readable_reports.js",
     "export": "node create_portfolio_export.js",
     "archive": "node archive_reports.js",
     "archive:preview": "node archive_reports.js --dry-run",

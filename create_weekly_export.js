@@ -185,8 +185,8 @@ commoditySheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { 
 commodities.forEach(c => {
     commoditySheet.addRow({
         symbol: c.symbol,
-        price: c.price,
-        change_percent: parseFloat(c.change_percent.toFixed(2)),
+        price: c.price || 0,
+        change_percent: c.change_percent ? parseFloat(c.change_percent.toFixed(2)) : 0,
         trend: c.trend || 'NEUTRAL'
     });
 });
