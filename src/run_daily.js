@@ -16,9 +16,10 @@ const { execSync, spawn } = require('child_process');
 const fs   = require('fs');
 const path = require('path');
 const config = require('./lib/config');
+const logger = require('./lib/logger');
 
 const TODAY       = new Date().toISOString().split('T')[0];
-const REPORTS_DIR = path.join(__dirname, 'reports');
+const REPORTS_DIR = path.join(__dirname, '../reports');
 const POLL_MS     = config.gates.pollIntervalMs;
 const TIMEOUT_MS  = config.gates.timeoutMs;
 
@@ -49,7 +50,7 @@ console.log(`${Y}│${X} 5. Run intrinsic-value-scanner via Screener.in (GATE 2)
 console.log(`${Y}│${X} 6. Run gtt-manager audit (GATE 3)                              ${Y}│${X}`);
 console.log(`${Y}│${X}                                                                 ${Y}│${X}`);
 console.log(`${Y}│${X} Save all outputs to reports/${TODAY}_*.json                ${Y}│${X}`);
-console.log(`${Y}│${X} This script will auto-generate the .docx and .xlsx reports     ${Y}│${X}`);
+console.log(`${Y}│${X} This script will auto-generate the .md and .xlsx reports       ${Y}│${X}`);
 console.log(`${Y}│${X} once the JSON files are ready.                                 ${Y}│${X}`);
 console.log(`${Y}└─────────────────────────────────────────────────────────────────┘${X}\n`);
 
@@ -96,15 +97,13 @@ function runScript(scriptName) {
 // ─── Mode: If all JSON already present, skip waiting ──────────────────────
 if (allRequiredReady()) {
   console.log(`${G}✅ Required JSON files already present for ${TODAY}. Generating reports...${X}`);
-  const ok1 = runScript('create_daily_report.js');
+  const ok1 = runScript('create_master_markdown.js');
   const ok2 = runScript('create_portfolio_export.js');
-  const ok3 = runScript('create_readable_reports.js');
-  const ok4 = runScript('archive_reports.js');
 
-  if (ok1 && ok2 && ok3 && ok4) {
+  if (ok1 && ok2) {
     console.log(`\n${G}${BOLD}✅ Daily workflow complete. Run 'npm run check' before trading.${X}\n`);
   }
-  process.exit(ok1 && ok2 && ok3 && ok4 ? 0 : 1);
+  process.exit(ok1 && ok2 ? 0 : 1);
 }
 
 // ─── Mode: Poll for AI-generated JSON files ──────────────────────────────
@@ -147,21 +146,17 @@ const interval = setInterval(() => {
     
     console.log(`\n${G}${BOLD}All required gates passed! Generating reports...${X}\n`);
     
-    const ok1 = runScript('create_daily_report.js');
+    const ok1 = runScript('create_master_markdown.js');
     const ok2 = runScript('create_portfolio_export.js');
-    const ok3 = runScript('create_readable_reports.js');
-    const ok4 = runScript('archive_reports.js');
 
-    if (ok1 && ok2 && ok3 && ok4) {
+    if (ok1 && ok2) {
       console.log(`\n${G}${BOLD}✅ Daily workflow complete!${X}`);
-      console.log(`${G}   Reports saved to reports/${TODAY}_daily_report.docx${X}`);
-      console.log(`${G}   Excel saved to reports/Portfolio_${TODAY}.xlsx${X}`);
-      console.log(`${G}   Markdown reports: reports/${TODAY}_*.md${X}`);
-      console.log(`${G}   Old reports archived to archive/${TODAY}/${X}`);
+      console.log(`${G}   Reports saved to reports/${TODAY}/${X}`);
+      console.log(`${G}   Shortcuts updated in reports/Latest_Report.md and reports/Latest_Portfolio.xlsx${X}`);
       console.log(`\n${Y}► Run 'npm run check' before placing any order.${X}\n`);
     }
     
-    process.exit(ok1 && ok2 && ok3 && ok4 ? 0 : 1);
+    process.exit(ok1 && ok2 ? 0 : 1);
   }
 }, POLL_MS);
 

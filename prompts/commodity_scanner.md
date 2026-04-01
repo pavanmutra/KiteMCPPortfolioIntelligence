@@ -30,6 +30,11 @@ Natural Gas:  "MCX natural gas price today India"
 - `"Gold silver ratio India today"` → useful for relative value
 - `"Commodity outlook India 2026"` → macro context
 
+**Web Search Fallback Rule:**
+- For each web source: retry 5 times with 5s delay.
+- If web search returns non-200 or tool error after retries, use alternate sources (MoneyControl, Economic Times, LiveMint, BSE/NSE).
+- If alternates fail, retry web sources again (5×, 5s delay). If still failing, reuse previous-day JSON and mark `"data_status": "STALE"` with `"fallback_reason"`.
+
 ### Step 2: Extract Price Data
 From search results, extract for each commodity:
 ```

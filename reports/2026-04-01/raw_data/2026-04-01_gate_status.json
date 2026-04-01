@@ -1,0 +1,82 @@
+{
+  "date": "2026-04-01",
+  "overall_status": "PASS",
+  "gates": {
+    "gate_0_opportunity_scan": {
+      "status": "PASS",
+      "output": "2026-04-01_opportunities.json",
+      "notes": "Short/medium/long-term opportunities identified"
+    },
+    "gate_0.3_commodity_scan": {
+      "status": "PASS",
+      "output": "2026-04-01_commodity_opportunities.json",
+      "notes": "Gold Rs.145,431, Silver Rs.229,468"
+    },
+    "gate_0.5_news_scan": {
+      "status": "PASS",
+      "output": "2026-04-01_news_opportunities.json",
+      "notes": "6 news items tracked; Iran war de-escalation theme"
+    },
+    "gate_1_market_status": {
+      "status": "PASS",
+      "notes": "Market bearish (-2.14% Nifty), high volatility"
+    },
+    "gate_2_portfolio_scan": {
+      "status": "PASS",
+      "output": "2026-04-01_portfolio_snapshot.json",
+      "notes": "7 holdings, total value Rs.606,194, P&L -9.67%"
+    },
+    "gate_3_intrinsic_value_screen": {
+      "status": "PASS",
+      "output": "2026-04-01_value_screen.json",
+      "notes": "ASHOKA 34% MoS discount; JINDALPHOT overvalued; TMCV negative EPS"
+    },
+    "gate_3.5_gtt_placement": {
+      "status": "PASS",
+      "output": "2026-04-01_gtt_placement.json",
+      "notes": "7 stop-loss GTTs placed (all holdings now protected)",
+      "gtt_ids": [313436860, 313436857, 313436858, 313436859, 313436889, 313436892, 313436893]
+    },
+    "gate_4_daily_report": {
+      "status": "PASS",
+      "output": "2026-04-01_daily_report.docx",
+      "notes": "Daily briefing generated"
+    },
+    "gate_5_excel_export": {
+      "status": "PASS",
+      "output": "Portfolio_2026-04-01.xlsx",
+      "notes": "5-sheet Excel with Holdings, Tax, Dividend, Commodities, Weekly"
+    },
+    "gate_6_individual_reports": {
+      "status": "PASS",
+      "outputs": [
+        "2026-04-01_portfolio_report.docx",
+        "2026-04-01_value_screen_report.docx",
+        "2026-04-01_gtt_audit_report.docx",
+        "2026-04-01_opportunities_report.docx",
+        "2026-04-01_commodity_opportunities_report.docx",
+        "2026-04-01_news_opportunities_report.docx"
+      ],
+      "notes": "6 individual deep-dive reports generated"
+    },
+    "gate_7_weekly_export": {
+      "status": "PASS",
+      "output": "Weekly_Portfolio_2026-04-01.xlsx",
+      "notes": "Week summary: +2.1% WoW change"
+    }
+  },
+  "portfolio_summary": {
+    "total_holdings": 7,
+    "total_value": 606194.25,
+    "total_pnl": -64802.48,
+    "total_pnl_percent": -9.67,
+    "available_margin": 1909663.2,
+    "stop_loss_coverage": "100%"
+  },
+  "action_items": [
+    "ASHOKA: 34% MoS - Strong accumulate candidate",
+    "JINDALPHOT: -400% MoS - Overvalued, review/trim",
+    "TMCV: Negative EPS - Verify fundamentals (new demerger stock)"
+  ],
+  "next_scan": "2026-04-02"
+}

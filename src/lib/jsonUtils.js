@@ -48,7 +48,7 @@ function isFileAccessible(filepath) {
     } catch (e) {
         return false;
     }
-    return true;
+    return false;
 }
 
 /**
@@ -84,11 +84,49 @@ async function writeJsonFileAsync(filepath, data) {
     await fs.promises.writeFile(filepath, JSON.stringify(data, null, 2), 'utf8');
 }
 
+/**
+ * Find and read a report JSON file across all possible locations.
+ * Search order:
+ *   1. reports/YYYY-MM-DD_filename.json  (flat root — before organize)
+ *   2. reports/YYYY-MM-DD/data/filename.json  (organized structure)
+ *   3. reports/archive/YYYY-MM-DD/filename.json  (archived)
+ *   4. reports/archive/YYYY-MM-DD/data/filename.json  (archived + organized)
+ *
+ * @param {string} date - Date string YYYY-MM-DD
+ * @param {string} filename - Base filename without date prefix, e.g. "portfolio_snapshot.json"
+ * @param {string} [reportsDir] - Path to reports directory (default: ./reports)
+ * @returns {object|null} - Parsed JSON or null
+ */
+function findReport(date, filename, reportsDir) {
+    const dir = reportsDir || path.join(process.cwd(), 'reports');
+    
+    const searchPaths = [
+        // 1. Flat root: reports/YYYY-MM-DD_filename
+        path.join(dir, `${date}_${filename}`),
+        // 2. Organized: reports/YYYY-MM-DD/data/filename
+        path.join(dir, date, 'data', filename),
+        // 3. Archive flat: reports/archive/YYYY-MM-DD/filename
+        path.join(dir, 'archive', date, filename),
+        // 4. Archive with date prefix: reports/archive/YYYY-MM-DD/YYYY-MM-DD_filename
+        path.join(dir, 'archive', date, `${date}_${filename}`),
+        // 5. Archive organized: reports/archive/YYYY-MM-DD/data/filename
+        path.join(dir, 'archive', date, 'data', filename),
+    ];
+    
+    for (const p of searchPaths) {
+        const result = readJsonFile(p);
+        if (result) return result;
+    }
+    
+    return null;
+}
+
 module.exports = {
     readJsonFile,
     readJsonFileAsync,
     isFileAccessible,
     ensureDir,
     writeJsonFile,
-    writeJsonFileAsync
+    writeJsonFileAsync,
+    findReport
 };

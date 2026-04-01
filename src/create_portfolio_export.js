@@ -1,17 +1,35 @@
 const { Workbook } = require('exceljs');
 const { readJsonFile, isFileAccessible, ensureDir } = require('./lib/jsonUtils');
 const config = require('./lib/config');
+const logger = require('./lib/logger');
+const Formatters = require('./utils/formatters');
 const fs   = require('fs');
 const path = require('path');
 
 const today      = new Date().toISOString().split('T')[0];
 const reportDate = today;
 
-const portfolioData  = readJsonFile(`reports/${reportDate}_portfolio_snapshot.json`);
-const valueData      = readJsonFile(`reports/${reportDate}_value_screen.json`);
-const commodityData  = readJsonFile(`reports/${reportDate}_commodity_opportunities.json`);
-const oppData        = readJsonFile(`reports/${reportDate}_opportunities.json`);
-const newsOppData    = readJsonFile(`reports/${reportDate}_news_opportunities.json`) || {};
+const DAILY_DIR = path.join(__dirname, '../reports', reportDate);
+const RAW_DIR = path.join(DAILY_DIR, 'raw_data');
+
+function readJSONWithFallback(filename) {
+  try {
+    const filePath = path.join(RAW_DIR, filename);
+    if (fs.existsSync(filePath)) {
+      return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    }
+    return null;
+  } catch (err) {
+    logger.warn(`Could not read ${filename}: ${err.message}`);
+    return null;
+  }
+}
+
+const portfolioData  = readJSONWithFallback(`${reportDate}_portfolio_snapshot.json`);
+const valueData      = readJSONWithFallback(`${reportDate}_value_screen.json`);
+const commodityData  = readJSONWithFallback(`${reportDate}_commodity_opportunities.json`);
+const oppData        = readJSONWithFallback(`${reportDate}_opportunities.json`);
+const newsOppData    = readJSONWithFallback(`${reportDate}_news_opportunities.json`) || {};
 
 // Support both 'news' and 'opportunities' keys in news_opportunities.json
 const newsData = newsOppData?.news || newsOppData?.opportunities || [];
@@ -57,15 +75,18 @@ function getTaxCategory(h) {
 }
 
 const rawHoldings = portfolioData?.holdings || config.export.defaultHoldings;
+const normalizedRawHoldings = Formatters.normalizeHoldings(rawHoldings);
 
-const holdings = rawHoldings.map(h => {
-    const qty      = h.quantity     || h.qty;
-    const avgPrice = h.average_price || h.avg_price;
-    const curPrice = h.current_price  || h.last_price;
+const holdings = normalizedRawHoldings.map((h, i) => {
+    // rawHoldings still has the original data for extra fields not in normalizeHoldings
+    const originalH = rawHoldings[i];
+    const qty      = h.qty;
+    const avgPrice = h.avg;
+    const curPrice = h.last;
     const invested = qty * avgPrice;
     const curValue = qty * curPrice;
     const pnlVal   = h.pnl != null ? h.pnl : (curValue - invested);
-    const pnlPct   = h.pnl_percent || h.pnl_pct
+    const pnlPct   = originalH.pnl_percent || originalH.pnl_pct
         || (invested > 0 ? ((pnlVal / invested) * 100) : 0);
     return {
         symbol:        h.symbol,
@@ -76,9 +97,9 @@ const holdings = rawHoldings.map(h => {
         current_value: curValue,
         pnl:           pnlVal,
         pnl_percent:   pnlPct,
-        dividend_yield:h.dividend_yield || 0,
-        tax_category:  getTaxCategory(h),
-        holding_period_days: h.holding_period_days || 0,
+        dividend_yield:originalH.dividend_yield || 0,
+        tax_category:  getTaxCategory(originalH),
+        holding_period_days: originalH.holding_period_days || 0,
         margin_of_safety: ivMap[h.symbol]?.margin_of_safety ?? null,
         intrinsic_value:  ivMap[h.symbol]?.graham_number ?? null,
     };
@@ -346,19 +367,21 @@ weeklySheet.getRow(1).alignment = { horizontal: 'center' };
 weeklySheet.addRow({ metric: 'Portfolio Value', this_week: Math.round(totalValue), change: '' });
 weeklySheet.addRow({ metric: 'Total P&L', this_week: Math.round(totalPnl), change: '' });
 weeklySheet.addRow({ metric: 'P&L %', this_week: parseFloat((totalPnl / totalInvested * 100).toFixed(1)) + '%', change: '' });
-weeklySheet.addRow({ metric: 'Best Performer', this_week: holdings.reduce((a, b) => a.pnl_percent > b.pnl_percent ? a : b).symbol, change: '' });
-weeklySheet.addRow({ metric: 'Worst Performer', this_week: holdings.reduce((a, b) => a.pnl_percent < b.pnl_percent ? a : b).symbol, change: '' });
+weeklySheet.addRow({ metric: 'Best Performer', this_week: holdings.length > 0 ? holdings.reduce((a, b) => (a.pnl_percent || 0) > (b.pnl_percent || 0) ? a : b).symbol : 'N/A', change: '' });
+weeklySheet.addRow({ metric: 'Worst Performer', this_week: holdings.length > 0 ? holdings.reduce((a, b) => (a.pnl_percent || 0) < (b.pnl_percent || 0) ? a : b).symbol : 'N/A', change: '' });
 weeklySheet.addRow({ metric: 'New Positions', this_week: 0, change: '' });
 weeklySheet.addRow({ metric: 'Closed Positions', this_week: 0, change: '' });
 weeklySheet.addRow({ metric: 'Expected Dividend Income', this_week: Math.round(totalDividend), change: '' });
 
-const excelOutputPath = `reports/Portfolio_${reportDate}.xlsx`;
+const excelOutputPath = path.join(DAILY_DIR, `Portfolio_${reportDate}.xlsx`);
+
+ensureDir(DAILY_DIR);
 
 // Check if Excel file is open - if so, use timestamp variant
 let finalPath = excelOutputPath;
-if (!isFileAccessible(excelOutputPath)) {
+if (fs.existsSync(excelOutputPath) && !isFileAccessible(excelOutputPath)) {
     const timestamp = Date.now();
-    finalPath = `reports/Portfolio_${reportDate}_${timestamp}.xlsx`;
+    finalPath = path.join(DAILY_DIR, `Portfolio_${reportDate}_${timestamp}.xlsx`);
     console.log(`\n⚠️  Original file open - using: ${finalPath}`);
 }
 
@@ -369,7 +392,7 @@ async function saveExcel() {
     } catch (err) {
         if (err.code === 'EBUSY') {
             const timestamp = Date.now();
-            finalPath = `reports/Portfolio_${reportDate}_${timestamp}.xlsx`;
+            finalPath = path.join(DAILY_DIR, `Portfolio_${reportDate}_${timestamp}.xlsx`);
             console.log(`\n⚠️  File busy - saving as: ${finalPath}`);
             await wb.xlsx.writeFile(finalPath);
             return finalPath;
@@ -381,6 +404,16 @@ async function saveExcel() {
 saveExcel()
     .then((savedPath) => {
         console.log(`\nPortfolio Excel saved to: ${path.resolve(savedPath)}`);
+        
+        // Copy to Latest
+        try {
+            const latestPath = path.join(__dirname, '../reports', 'Latest_Portfolio.xlsx');
+            fs.copyFileSync(savedPath, latestPath);
+            console.log(`✅ Shortcut updated: reports/Latest_Portfolio.xlsx`);
+        } catch (copyErr) {
+            console.error(`⚠️ Failed to update Latest_Portfolio.xlsx: ${copyErr.message}`);
+        }
+
     console.log('\n=== SHEETS GENERATED ===');
     console.log('1. Holdings - Portfolio positions with P&L');
     console.log('2. Tax Summary - Unrealized gains & tax-loss harvesting');
@@ -391,4 +424,7 @@ saveExcel()
     console.log(`Total P&L: ₹${Math.round(totalPnl).toLocaleString('en-IN')}`);
     console.log(`Tax Loss Candidates: ${taxLossCandidates.length}`);
     console.log(`Expected Annual Dividend: ₹${Math.round(totalDividend).toLocaleString('en-IN')}`);
+}).catch(err => {
+    console.error("\n❌ Failed to save Excel file:");
+    console.error(err);
 });

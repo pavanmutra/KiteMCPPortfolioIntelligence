@@ -1,0 +1,395 @@
+{
+  "date": "2026-04-01",
+  "scan_type": "DEEP_DISCOUNT_ACCUMULATION_WATCHLIST",
+  "market_context": {
+    "nifty50": 22331.40,
+    "nifty50_change_pct": -2.14,
+    "market_status": "BEARISH",
+    "volatility": "HIGH",
+    "sentiment": "Risk-off - Good time to accumulate quality at discounts"
+  },
+  "available_margin": 1909663.20,
+  "portfolio_holdings": ["ASHOKA", "CAMS", "ENERGY", "JINDALPHOT", "NXST-RR", "TMCV", "VHL"],
+  "sources": [
+    "Screener.in Value Stocks Screen (High OPM, ROCE, Low D/E)",
+    "Screener.in High Growth High ROE Low PE Screen",
+    "Tickertape Money Minters (Negative Cash Conversion Cycle)",
+    "Existing Portfolio Value Screen"
+  ],
+  "watchlist": [
+    {
+      "symbol": "TANLA",
+      "exchange": "NSE",
+      "company_name": "Tanla Platforms Ltd",
+      "sector": "IT - Software / CPaaS",
+      "current_price": 406.15,
+      "book_value": 38.2,
+      "pe_ratio": 16.1,
+      "eps_ttm": 25.23,
+      "roe": 47.6,
+      "roce": 41.0,
+      "debt_to_equity": 0.03,
+      "dividend_yield": 2.96,
+      "graham_number": 147.28,
+      "intrinsic_value_pe_fair": 630.75,
+      "intrinsic_value_avg": 389.0,
+      "margin_of_safety": -4.4,
+      "status": "FAIRLY VALUED",
+      "action": "WATCH - Wait for dip below Rs.380",
+      "thesis": "CPaaS leader with 35% market share in India, 47.6% ROE, near-zero debt. Trading near fair value.",
+      "buy_trigger_price": 380.0,
+      "target_price": 630.0,
+      "stop_loss_price": 342.0,
+      "position_size_suggestion": "5% of portfolio (~Rs.95,000)",
+      "priority": "HIGH",
+      "confidence": 85
+    },
+    {
+      "symbol": "PRUDENT",
+      "exchange": "NSE",
+      "company_name": "Prudent Corporate Advisory Services Ltd",
+      "sector": "Financial Services / Wealth Management",
+      "current_price": 2250.10,
+      "book_value": 55.0,
+      "pe_ratio": 43.55,
+      "eps_ttm": 47.25,
+      "roe": 44.06,
+      "roce": 44.06,
+      "debt_to_equity": 0.04,
+      "dividend_yield": 0.11,
+      "graham_number": 242.0,
+      "intrinsic_value_pe_fair": 1181.25,
+      "intrinsic_value_avg": 711.6,
+      "margin_of_safety": -216.3,
+      "status": "OVERVALUED",
+      "action": "AVOID - Trading at 3x fair value",
+      "thesis": "High-quality wealth management company but extremely overvalued at 43x PE.",
+      "buy_trigger_price": null,
+      "target_price": null,
+      "stop_loss_price": null,
+      "position_size_suggestion": "AVOID",
+      "priority": "LOW",
+      "confidence": 75
+    },
+    {
+      "symbol": "FINEORG",
+      "exchange": "NSE",
+      "company_name": "Fine Organic Industries Ltd",
+      "sector": "Specialty Chemicals",
+      "current_price": 4027.20,
+      "book_value": 280.0,
+      "pe_ratio": 31.52,
+      "eps_ttm": 133.89,
+      "roe": 26.39,
+      "roce": 26.39,
+      "debt_to_equity": 0.01,
+      "dividend_yield": 0.28,
+      "graham_number": 917.58,
+      "intrinsic_value_pe_fair": 3347.25,
+      "intrinsic_value_avg": 2132.4,
+      "margin_of_safety": -88.9,
+      "status": "OVERVALUED",
+      "action": "AVOID - 89% above fair value",
+      "thesis": "Quality specialty chemicals company but trading at premium valuation.",
+      "buy_trigger_price": null,
+      "target_price": null,
+      "stop_loss_price": null,
+      "position_size_suggestion": "AVOID",
+      "priority": "LOW",
+      "confidence": 70
+    },
+    {
+      "symbol": "TANFACIND",
+      "exchange": "BSE",
+      "company_name": "Tanfac Industries Ltd",
+      "sector": "Specialty Chemicals",
+      "current_price": 1924.75,
+      "book_value": 180.0,
+      "pe_ratio": 51.44,
+      "eps_ttm": 44.08,
+      "roe": 41.76,
+      "roce": 41.76,
+      "debt_to_equity": 0.09,
+      "dividend_yield": 0.26,
+      "graham_number": 422.35,
+      "intrinsic_value_pe_fair": 1102.0,
+      "intrinsic_value_avg": 762.2,
+      "margin_of_safety": -152.5,
+      "status": "OVERVALUED",
+      "action": "AVOID - Trading at 2.5x fair value",
+      "thesis": "Excellent ROE and low debt but extremely overvalued at 51x PE.",
+      "buy_trigger_price": null,
+      "target_price": null,
+      "stop_loss_price": null,
+      "position_size_suggestion": "AVOID",
+      "priority": "LOW",
+      "confidence": 70
+    },
+    {
+      "symbol": "TAALTECH",
+      "exchange": "BSE",
+      "company_name": "TAAL Tech Ltd",
+      "sector": "IT - Software",
+      "current_price": 2724.20,
+      "book_value": 320.0,
+      "pe_ratio": 16.49,
+      "eps_ttm": 156.56,
+      "roe": 32.73,
+      "roce": 32.73,
+      "debt_to_equity": 0.01,
+      "dividend_yield": 2.39,
+      "graham_number": 1061.41,
+      "intrinsic_value_pe_fair": 3914.0,
+      "intrinsic_value_avg": 2487.7,
+      "margin_of_safety": -9.5,
+      "status": "FAIRLY VALUED",
+      "action": "WATCH - Small market cap (Rs.848 Cr), liquidity risk",
+      "thesis": "Low PE (16.5x), good dividend (2.4%), but very small cap with liquidity concerns.",
+      "buy_trigger_price": 2400.0,
+      "target_price": 3500.0,
+      "stop_loss_price": 2160.0,
+      "position_size_suggestion": "2% max (~Rs.38,000) due to liquidity",
+      "priority": "MEDIUM",
+      "confidence": 65
+    },
+    {
+      "symbol": "ESABINDIA",
+      "exchange": "NSE",
+      "company_name": "ESAB India Ltd",
+      "sector": "Capital Goods / Welding",
+      "current_price": 5132.70,
+      "book_value": 350.0,
+      "pe_ratio": 40.88,
+      "eps_ttm": 113.96,
+      "roe": 70.03,
+      "roce": 70.03,
+      "debt_to_equity": 0.01,
+      "dividend_yield": 1.25,
+      "graham_number": 946.82,
+      "intrinsic_value_pe_fair": 2849.0,
+      "intrinsic_value_avg": 1897.9,
+      "margin_of_safety": -170.4,
+      "status": "OVERVALUED",
+      "action": "AVOID - Trading at 2.7x fair value despite 70% ROCE",
+      "thesis": "Exceptional ROCE (70%) but market has priced in all the quality.",
+      "buy_trigger_price": null,
+      "target_price": null,
+      "stop_loss_price": null,
+      "position_size_suggestion": "AVOID",
+      "priority": "LOW",
+      "confidence": 70
+    },
+    {
+      "symbol": "SANOFI",
+      "exchange": "NSE",
+      "company_name": "Sanofi India Ltd",
+      "sector": "Pharma",
+      "current_price": 3265.80,
+      "book_value": 450.0,
+      "pe_ratio": 21.80,
+      "eps_ttm": 142.04,
+      "roe": 57.53,
+      "roce": 57.53,
+      "debt_to_equity": 0.02,
+      "dividend_yield": 2.28,
+      "graham_number": 1199.46,
+      "intrinsic_value_pe_fair": 3551.0,
+      "intrinsic_value_avg": 2375.2,
+      "margin_of_safety": -37.5,
+      "status": "SLIGHTLY OVERVALUED",
+      "action": "WATCH - Quality pharma but 37% above fair value",
+      "thesis": "Defensive pharma with 57% ROCE, 2.3% dividend. Wait for 15-20% correction.",
+      "buy_trigger_price": 2800.0,
+      "target_price": 4000.0,
+      "stop_loss_price": 2520.0,
+      "position_size_suggestion": "3% of portfolio (~Rs.57,000) on dip",
+      "priority": "MEDIUM",
+      "confidence": 75
+    },
+    {
+      "symbol": "ASHOKA",
+      "exchange": "NSE",
+      "company_name": "Ashoka Buildcon Ltd",
+      "sector": "Infrastructure / Construction",
+      "current_price": 108.48,
+      "book_value": 149.0,
+      "pe_ratio": 14.3,
+      "eps_ttm": 7.14,
+      "roe": 4.75,
+      "roce": 12.5,
+      "debt_to_equity": 0.8,
+      "dividend_yield": 0.5,
+      "graham_number": 154.74,
+      "intrinsic_value_pe_fair": 178.5,
+      "intrinsic_value_avg": 166.6,
+      "margin_of_safety": 34.9,
+      "status": "MODERATE DISCOUNT",
+      "action": "ACCUMULATE - Already in portfolio, add on dips",
+      "thesis": "Infrastructure play with 35% MoS. Recently bought at Rs.112.72 avg. Add more below Rs.100.",
+      "buy_trigger_price": 100.0,
+      "target_price": 155.0,
+      "stop_loss_price": 90.0,
+      "position_size_suggestion": "Already holding 435 shares. Add 500 more on dip (~Rs.50,000)",
+      "priority": "HIGH",
+      "confidence": 80,
+      "existing_holding": {
+        "quantity": 435,
+        "avg_price": 112.72,
+        "current_pnl_pct": -3.76
+      }
+    }
+  ],
+  "top_accumulation_candidates": [
+    {
+      "rank": 1,
+      "symbol": "ASHOKA",
+      "reason": "34.9% MoS, already in portfolio, infra sector showing relative strength",
+      "buy_zone": "Rs.95-105",
+      "allocation": "Rs.50,000 (500 shares)"
+    },
+    {
+      "rank": 2,
+      "symbol": "TANLA",
+      "reason": "CPaaS leader, 47.6% ROE, near-zero debt, wait for dip",
+      "buy_zone": "Rs.360-380",
+      "allocation": "Rs.95,000 (250 shares)"
+    },
+    {
+      "rank": 3,
+      "symbol": "SANOFI",
+      "reason": "Defensive pharma, 57% ROCE, 2.3% dividend, wait for correction",
+      "buy_zone": "Rs.2,700-2,900",
+      "allocation": "Rs.57,000 (20 shares)"
+    }
+  ],
+  "avoid_list": [
+    {
+      "symbol": "PRUDENT",
+      "reason": "Trading at 216% above fair value despite quality metrics"
+    },
+    {
+      "symbol": "FINEORG",
+      "reason": "89% overvalued - specialty chemicals premium too high"
+    },
+    {
+      "symbol": "TANFACIND",
+      "reason": "152% overvalued at 51x PE"
+    },
+    {
+      "symbol": "ESABINDIA",
+      "reason": "170% overvalued despite exceptional 70% ROCE"
+    }
+  ],
+  "portfolio_action_summary": {
+    "immediate_buys": [],
+    "accumulate_on_dips": ["ASHOKA"],
+    "watchlist_for_entry": ["TANLA", "SANOFI"],
+    "hold_existing": ["CAMS", "ENERGY", "NXST-RR", "TMCV", "VHL"],
+    "review_for_trim": ["JINDALPHOT"]
+  },
+  "existing_gtts_analysis": {
+    "total_active_gtts": 23,
+    "portfolio_protection": {
+      "ASHOKA": {
+        "stop_loss_gtt_id": 313436860,
+        "stop_loss_trigger": 91.9,
+        "stop_loss_qty": 435,
+        "buy_gtts": "NONE - Consider adding accumulation GTT"
+      },
+      "CAMS": {
+        "stop_loss_gtt_id": 313436857,
+        "stop_loss_trigger": 563,
+        "stop_loss_qty": 228,
+        "buy_gtts": [
+          {"id": 313389358, "trigger": 580, "qty": 130},
+          {"id": 312230672, "trigger": 595, "qty": 170},
+          {"id": 312230683, "trigger": 610, "qty": 180}
+        ]
+      },
+      "ENERGY": {
+        "stop_loss_gtt_id": 313436858,
+        "stop_loss_trigger": 31.5,
+        "stop_loss_qty": 2571,
+        "buy_gtts": [
+          {"id": 313389360, "trigger": 33.25, "qty": 2000},
+          {"id": 312230692, "trigger": 33.5, "qty": 1500},
+          {"id": 311640041, "trigger": 34.48, "qty": 1000}
+        ]
+      },
+      "JINDALPHOT": {
+        "stop_loss_gtt_id": 313436859,
+        "stop_loss_trigger": 883.5,
+        "stop_loss_qty": 85,
+        "target_gtt_id": 312230219,
+        "target_trigger": 1200,
+        "target_qty": 85
+      },
+      "NXST-RR": {
+        "stop_loss_gtt_id": 313436889,
+        "stop_loss_trigger": 119,
+        "stop_loss_qty": 650,
+        "buy_gtts": [{"id": 312230708, "trigger": 148, "qty": 500}],
+        "target_gtts": [
+          {"id": 312230368, "trigger": 165, "qty": 350},
+          {"id": 312230384, "trigger": 175, "qty": 300}
+        ]
+      },
+      "TMCV": {
+        "stop_loss_gtt_id": 313436892,
+        "stop_loss_trigger": 323,
+        "stop_loss_qty": 110,
+        "target_gtt_id": 312230354,
+        "target_trigger": 450,
+        "target_qty": 110
+      },
+      "VHL": {
+        "stop_loss_gtt_id": 313436893,
+        "stop_loss_trigger": 2679,
+        "stop_loss_qty": 35,
+        "target_gtt_id": 312230227,
+        "target_trigger": 3500,
+        "target_qty": 35
+      }
+    },
+    "niftybees_gtts": {
+      "buy_gtts": [
+        {"id": 312618254, "trigger": 215, "qty": 5000},
+        {"id": 312618215, "trigger": 225, "qty": 5000}
+      ],
+      "sell_gtts": [
+        {"id": 312618270, "trigger": 270, "qty": 2500},
+        {"id": 312618306, "trigger": 285, "qty": 2500}
+      ]
+    }
+  },
+  "gtt_recommendations": [
+    {
+      "symbol": "ASHOKA",
+      "type": "BUY",
+      "trigger_price": 100.0,
+      "limit_price": 100.0,
+      "quantity": 500,
+      "rationale": "Accumulate on 8% dip from current; MoS will increase to 40%+",
+      "existing_gtt": "NONE - Stop-loss only (ID: 313436860)",
+      "status": "RECOMMENDED"
+    },
+    {
+      "symbol": "TANLA",
+      "type": "BUY",
+      "trigger_price": 380.0,
+      "limit_price": 380.0,
+      "quantity": 250,
+      "rationale": "Enter CPaaS leader at 6% discount from current",
+      "existing_gtt": "NONE - New watchlist entry",
+      "status": "RECOMMENDED"
+    }
+  ],
+  "next_steps": [
+    "Place BUY GTT for ASHOKA at Rs.100 (500 qty) - No existing accumulation GTT",
+    "Place BUY GTT for TANLA at Rs.380 (250 qty) - New position entry",
+    "Monitor SANOFI for entry below Rs.2,800",
+    "Review JINDALPHOT for potential trim/exit - Stop-loss at Rs.883.5 active"
+  ],
+  "generated_at": "2026-04-01T11:15:00+05:30",
+  "gtt_audit_complete": true
+}

@@ -135,6 +135,29 @@ ROOT CAUSE:
 
 ---
 
+### ❌ MISTAKE P-013 — Skipped Updating Agents/Learnings/Gates After Changes
+```
+DATE     : 2026-04-01
+WHAT HAPPENED:
+  Made process changes during a session but did not update AGENTS.md,
+  learnings.md, and gate/checklist rules in the same session.
+  This caused drift between actual workflow and documented workflow.
+
+ROOT CAUSE:
+  Treated documentation updates as optional instead of mandatory.
+
+⛔ NEVER DO:
+  Apply workflow or rule changes without updating AGENTS.md,
+  learnings.md, and gate/checklist references immediately.
+
+✅ FIX / RULE ADDED:
+  Every session change must update:
+   - AGENTS.md (checklists/gates)
+   - learnings.md (rule registry + master rules)
+   - Any affected prompt/gate definitions
+  If new source/fallback works, record it in AGENTS.md and learnings.md.
+```
+
 ### ❌ MISTAKE P-001 — GTT Trigger Price Gone Stale
 ```
 DATE     : [add date]
@@ -154,6 +177,47 @@ ROOT CAUSE:
   gtt-manager checklist: flag any GTT not reviewed in > 30 days.
   Trailing stop rule: GTT stop = highest_close × 0.88 (not cost price).
   Monthly GTT reset is now a scheduled task.
+```
+
+---
+
+### ✅ RULE R-25 — Skip Stop-Loss GTT If MoS ≥ 50%
+```
+DATE ADDED : 2026-03-31
+RATIONALE:
+  Deep discount stocks (MoS ≥ 50%) deserve patience and should not be exited
+  on routine volatility (12% dips). Stop-loss GTTs are too tight for these.
+  Example: ASHOKA has MoS 56.51% — a 12% stop would trigger on normal swings
+  and lock in losses on a generational opportunity.
+
+RULE LOGIC:
+  IF Margin of Safety ≥ 50%:
+    → SKIP stop-loss GTT (do not place protective stop)
+    → HOLD through volatility (deep value requires patience)
+    → Consider target GTT instead (sell when IV reached, 50%+ upside)
+    → Review quarterly: if MoS drops below 50% → add stop then
+  
+  IF 25% ≤ MoS < 50%:
+    → PLACE stop-loss GTT at avg_price × 0.88
+    → Moderate discount needs downside protection
+    → Balance between value and risk
+  
+  IF MoS < 25%:
+    → DO NOT BUY (Rule C-001)
+    → If holding: review for exit
+    → Fair/overvalued = needs protection
+
+AFFECTED HOLDINGS (2026-03-31):
+  Skip GTT:  ASHOKA (MoS 56.51%), VHL (MoS 74.8%)
+  Place GTT: CAMS (MoS 4.5%), ENERGY (MoS 0.9%), JINDALPHOT (MoS 4.7%)
+
+EXCEPTION:
+  If stock shows signs of fundamental deterioration (EPS decline 2Q+, D/E>2),
+  then place stop-loss even if MoS > 50%. Fundamentals trump valuation.
+
+✅ IMPLEMENTATION:
+  gtt-manager checks MoS before placing stop-loss GTT.
+  If MoS ≥ 50%: Skip with note "Deep discount, hold through volatility"
 ```
 
 ---
@@ -300,6 +364,37 @@ ROOT CAUSE:
 
 ---
 
+### ❌ MISTAKE T-006 — Google Search API Not Configured (404 Project Not Found)
+```
+DATE     : 2026-03-31
+WHAT HAPPENED:
+  Attempted google_search for opportunity/news/commodity scans.
+  API returned 404: "Resource projects/unknown could not be found"
+  This indicates GCP project credentials not configured in environment.
+
+ROOT CAUSE:
+  google_search tool requires valid GCP project with Search API enabled.
+  Environment does not have GOOGLE_CLOUD_PROJECT or valid credentials.
+  Tool initialization fails silently → returns 404 on any query.
+
+⛔ NEVER DO:
+  Assume google_search will work without verifying GCP setup.
+  Attempt websearch-dependent gates without fallback sources.
+
+✅ FIX / RULE ADDED:
+  GATE 0 / 0.3 / 0.5 (opportunity/commodity/news scans):
+    [ ] For each web source: retry 5 times with 5s delay
+    [ ] If non-200 or tool error after retries → use alternate sources (MoneyControl, ET, LiveMint, BSE/NSE)
+    [ ] If alternates fail → retry web sources again (5×, 5s delay)
+    [ ] If still failing → fallback to previous day's JSON data
+    [ ] Add note to daily report: "Using previous-day scan results (today's websearch unavailable)"
+    [ ] Continue workflow without blocking
+  
+  GATE PROGRESSION: Not a hard stop. Reuse cached scan data and continue.
+```
+
+---
+
 ### ❌ MISTAKE T-001 — Kite Access Token Expired Mid-Session
 ```
 DATE     : [add date]
@@ -386,6 +481,7 @@ ROOT CAUSE:
     [ ] Fetch live fundamentals from screener.in for each stock
     [ ] Required metrics: EPS (TTM), Book Value, P/E, P/B, D/E, ROE
     [ ] Web search: "screener.in {SYMBOL} fundamental analysis"
+    [ ] If Screener fields are blank or partial → use alternate sources (Moneycontrol/Trendlyne) to fill required metrics
   No IV calculation allowed without current screener.in data.
 ```
 
@@ -459,6 +555,12 @@ ROOT CAUSE:
   - kite_search_instruments(symbol) to get official name
   - Web search "screener.in {SYMBOL}" for fundamentals
   - NEVER use symbol alone to infer business
+  - Tata Motors is split into TMCV and TMPV — do not use legacy TATAMOTORS
+  - Verify symbol via web search (screener.in or exchange site) before adding to reports
+    Example (TMCV): https://www.screener.in/company/TMCV/ or https://www.nseindia.com/get-quotes/equity?symbol=TMCV
+    Example (ENERGY): https://www.screener.in/company/ENERGY/ or https://www.nseindia.com/get-quotes/equity?symbol=ENERGY
+  - For REIT/ETF/Index units with special symbols (e.g., NXST-RR), confirm screener alias (e.g., NXST)
+    Example (NXST): https://www.screener.in/company/NXST/ and https://www.nseindia.com/get-quotes/equity?symbol=NXST
 ```
 
 ---
@@ -604,16 +706,24 @@ These rules are auto-checked by agents. Any violation = hard stop.
 12  All report filenames must include YYYY-MM-DD        T-002     
 13  Close Excel before running report-generator        T-003     
 14  MCP tools may be unavailable — fallback ready     T-004/T-005
- 15  Verify GTT trigger direction matches price flow    P-008
- 16  ALWAYS verify stock name before analysis           P-009
- 17  Use flexible field mapping for JSON schema changes  P-010
- 18  JSON output schema must match consumer scripts      P-011
- 19  Guard negative EPS — skip Graham if EPS ≤ 0        P-012
- 20  GTT stop-loss transaction_type = "SELL" (not BUY)   P-012
- 21  Every prompt imports _base.md first (no duplication) P-012
- 22  Never hardcode dates in examples (use YYYY-MM-DD)    P-012
- 23  Every agent prompt must have error recovery block    P-012
- 24  Validate JSON schema before saving to reports/       P-012
+15  Verify GTT trigger direction matches price flow    P-008
+16  ALWAYS verify stock name before analysis           P-009
+17  Use flexible field mapping for JSON schema changes  P-010
+18  JSON output schema must match consumer scripts      P-011
+19  Guard negative EPS — skip Graham if EPS ≤ 0        P-012
+20  GTT stop-loss transaction_type = "SELL" (not BUY)   P-012
+21  Every prompt imports _base.md first (no duplication) P-012
+22  Never hardcode dates in examples (use YYYY-MM-DD)    P-012
+23  Every agent prompt must have error recovery block    P-012
+24  Validate JSON schema before saving to reports/       P-012
+25  SKIP stop-loss GTT if MoS ≥ 50% (deep value)         R-025
+26  Web search retry 5x/5s → alternates → retry 5x/5s → prev-day JSON    T-006
+    If Google search tool fails, use DuckDuckGo or Bing via webfetch.
+27  Tata Motors uses TMCV/TMPV symbols only              P-009
+28  Update agents/learnings/gates after every change    P-013
+29  Verify symbol via web search before adding          P-014
+30  For REIT/ETF/Index units, confirm screener alias     P-015
+31  Check existing GTTs before placing new ones          P-016
  ─────────────────────────────────────────────────────────────────────
 ```
 

@@ -73,9 +73,11 @@
 
 <OPERATIONAL_INSTRUCTIONS>
   <ERROR_RECOVERY>
-    1. Retry fetch once after 3000ms.
-    2. Fallbacks: Kite -> local JSON snapshots | Screener -> Trendlyne/Moneycontrol.
-    3. Failure -> explicitly mark `"price_status": "STALE"` or `confidence_score: 0`.
+    1. For each web source: retry 5 times with 5s delay.
+    2. If web search returns non-200 or tool error after retries, switch to alternate sources (MoneyControl, Economic Times, LiveMint, BSE/NSE).
+    3. If alternates fail, retry web sources again (5×, 5s delay). If still failing, reuse previous-day JSON and mark `"data_status": "STALE"` with `"fallback_reason"`.
+    4. Fallbacks: Kite -> local JSON snapshots | Screener -> Trendlyne/Moneycontrol.
+    5. Failure -> explicitly mark `"price_status": "STALE"` or `confidence_score: 0`.
     4. If Kite Token invalid -> HALT ALL AGENTS. Prompt user to login.
   </ERROR_RECOVERY>
 

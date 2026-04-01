@@ -21,3 +21,7 @@ Thumbs.db
 # Keep these committed:
 # reports/*.json  ← AI-generated data, useful for history
 # reports/*.md    ← markdown notes, useful for history
+
+# Secrets
+.secrets/
+

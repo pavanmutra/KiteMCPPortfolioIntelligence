@@ -12,7 +12,7 @@
 # Step 2: Tell the AI: "Run daily workflow" (it reads this file automatically)
 # Step 3: Once AI has saved JSON files, run:
 
-npm run report     # → reports/YYYY-MM-DD_daily_report.docx
+npm run report     # → reports/YYYY-MM-DD/YYYY-MM-DD_daily_report.md
 npm run export     # → reports/Portfolio_YYYY-MM-DD.xlsx
 npm run check      # → Gate status (PASS = safe to trade | FAIL = do NOT trade)
 
@@ -36,11 +36,17 @@ BEFORE ANY OPERATION:
 [ ] 4. Confirm reports/ folder exists and is accessible
 [ ] 5. Check Excel file is NOT open (if modifying xlsx)
 [ ] 6. For ANY new stock discussed: Verify name via kite_search_instruments()
+[ ] 7. Verify symbol via web search (screener.in or exchange site) before adding to reports
+        Example (TMCV): https://www.screener.in/company/TMCV/ or https://www.nseindia.com/get-quotes/equity?symbol=TMCV
+        Example (ENERGY): https://www.screener.in/company/ENERGY/ or https://www.nseindia.com/get-quotes/equity?symbol=ENERGY
+[ ] 8. For any REIT/ETF/Index units with special symbols (e.g., NXST-RR), verify the screener symbol alias (e.g., NXST) before analysis
+        Example (NXST): https://www.screener.in/company/NXST/ and https://www.nseindia.com/get-quotes/equity?symbol=NXST
 ```
 
 **If MCP fails → Use manual execution fallback. Document in learnings.**
 
 **⚠️ IMPORTANT: Always verify stock name before analysis (Rule P-009)**
+**⚠️ NOTE: Tata Motors is split into TMCV and TMPV — use those symbols (not TATAMOTORS)**
 
 ---
 
@@ -56,12 +62,31 @@ or GTT modification is allowed before all gates pass.
 [ ] GATE 1 — Market Status Check       → Is market open / pre-open / closed?
 [ ] GATE 2 — Portfolio Morning Scan     → Fetch all holdings via KiteMCP
 [ ] GATE 3 — Intrinsic Value Screen     → Flag deeply discounted stocks
-[ ] GATE 4 — Daily Report Generated    → Save to reports/YYYY-MM-DD_daily.docx
+[ ] GATE 3.5 — GTT Placement Execution → Place approved GTT orders (buy accumulation, stop-loss, targets)
+[ ] GATE 4 — Daily Report Generated    → Save to reports/YYYY-MM-DD/YYYY-MM-DD_daily_report.md
                                           before any buy/sell/GTT action
 [ ] GATE 5 — Excel Export              → Generate Portfolio_YYYY-MM-DD.xlsx with tax & dividend
+[ ] GATE 6 — Individual Reports       → Generate agent-specific reports (portfolio, value, opportunities, GTT, news, commodities)
+[ ] GATE 7 — Weekly Export            → Generate Weekly_Portfolio_YYYY-MM-DD.xlsx with P&L analysis
 ```
 
 **If any gate fails → STOP. Fix the gate. Do not proceed.**
+
+**Documentation Sync Rule (Always-On):**
+- Any workflow or rule change must be reflected immediately in:
+  - AGENTS.md (checklists/gates)
+  - learnings.md (rule registry + master rules)
+  - Any affected prompt/gate definitions
+- Any successful new data source or fallback path must be recorded in:
+  - AGENTS.md (fallback steps/examples)
+  - learnings.md (rule registry)
+
+**Web Search Fallback Rule (Gates 0/0.3/0.5):**
+- For each web source: retry 5 times with 5s delay.
+- If web search returns non-200 or tool error after retries, use alternate sources (MoneyControl, Economic Times, LiveMint, BSE/NSE).
+- If alternates fail, retry web sources again (5×, 5s delay). If still failing, reuse previous-day JSON and mark outputs as `STALE` with a `fallback_reason`.
+ - If Google search tool fails, use DuckDuckGo or Bing via `webfetch` to locate sources, then fetch the source URLs directly.
+ - If a primary source returns partial/blank fundamentals, use alternate sources to complete required fields before proceeding.
 
 ---
 
@@ -84,16 +109,20 @@ or GTT modification is allowed before all gates pass.
 12  All report filenames must include YYYY-MM-DD        T-002     
 13  Close Excel before running report-generator        T-003     
 14  MCP tools may be unavailable — fallback ready     T-004/T-005
-15  Verify GTT trigger direction matches price flow    P-008
-16  ALWAYS verify stock name before analysis           P-009
-17  Use flexible field mapping for JSON schema changes  P-010
-18  JSON output schema must match consumer scripts      P-011
-19  Guard negative EPS — skip Graham if EPS ≤ 0        P-012
-20  GTT stop-loss transaction_type = "SELL" (not BUY)   P-012
-21  Every prompt imports _base.md first (no duplication) P-012
-22  Never hardcode dates in examples (use YYYY-MM-DD)    P-012
-23  Every agent prompt must have error recovery block    P-012
-24  Validate JSON schema before saving to reports/       P-012
+15  Web search retry 5x/5s → alternates → retry 5x/5s → prev-day JSON    T-006
+16  Verify GTT trigger direction matches price flow    P-008
+17  ALWAYS verify stock name before analysis           P-009
+18  Use flexible field mapping for JSON schema changes  P-010
+19  JSON output schema must match consumer scripts      P-011
+20  Guard negative EPS — skip Graham if EPS ≤ 0        P-012
+21  GTT stop-loss transaction_type = "SELL" (not BUY)   P-012
+22  Every prompt imports _base.md first (no duplication) P-012
+23  Never hardcode dates in examples (use YYYY-MM-DD)    P-012
+24  Every agent prompt must have error recovery block    P-012
+25  Validate JSON schema before saving to reports/       P-012
+26  Update agents/learnings/gates after every change    P-013
+27  Verify symbol via web search before adding          P-014
+28  For REIT/ETF/Index units, confirm screener alias     P-015
  ─────────────────────────────────────────────────────────────────────
 ```
 
@@ -169,7 +198,7 @@ OPPORTUNITY SCAN CHECKLIST
 
 ### Output Format
 ```
-OPPORTUNITY: TATAMOTORS
+OPPORTUNITY: TMCV
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Horizon         : MEDIUM-TERM
 Current Price   : ₹780
@@ -480,11 +509,34 @@ GTT DAILY AUDIT CHECKLIST
 BUY Position Stop-Loss: Trigger BELOW current price (avg_price × 0.88 = 12% below cost)
 SELL Position Target: Trigger ABOVE current price (target price reached)
 OCO GTT         : Use for high-conviction deep discount stocks only
+
+🔥 NEW RULE (R-25): SKIP STOP-LOSS GTT IF MoS ≥ 50%
+   Rationale: Deep discount stocks should be held through volatility
+   Do NOT exit a 50%+ MoS stock on a 12% dip
+   Instead: Set trailing target GTT when MoS approaches 30%
 ```
 
 **CRITICAL: Verify trigger price is correctly positioned relative to current price**
 - For BUY holds: Stop-loss trigger < current price
 - For new SELL triggers: Target trigger > current price
+
+**MoS-BASED GTT LOGIC:**
+```
+IF MoS ≥ 50%:
+  → SKIP stop-loss GTT (hold through volatility)
+  → Set target GTT instead (sell when IV reached)
+  → Rationale: Deep value deserves patience
+  
+IF 25% ≤ MoS < 50%:
+  → PLACE stop-loss GTT (moderate protection)
+  → Set at avg_price × 0.88 (12% below cost)
+  → Rationale: Moderate discount needs downside protection
+  
+IF MoS < 25%:
+  → DO NOT BUY (Rule C-001)
+  → If already holding: Review for exit
+  → Rationale: Fair/overvalued stocks need protection
+```
 
 ### KiteMCP Calls
 ```javascript
@@ -493,6 +545,201 @@ kite.placeGTT({ type, symbol, trigger_price, quantity, order_params })
 kite.modifyGTT({ gtt_id, trigger_price, quantity })
 kite.deleteGTT({ gtt_id })
 ```
+
+---
+
+## GATE 3.5 — `gtt-placement-executor`
+
+### Role
+Execute approved GTT orders immediately after GATE 3 (intrinsic value screen) completes.
+This is a **critical execution gate** that bridges analysis (GATE 3) and reporting (GATE 4).
+
+### Execution Checklist
+
+```
+GTT PLACEMENT EXECUTION CHECKLIST
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[ ] 1. Confirm GATE 3 (intrinsic value screen) is complete
+[ ] 2. Confirm user has approved GTT placement decisions:
+        [ ] Which GTTs to place (symbol, qty, trigger price)
+        [ ] Which GTTs to skip (MoS > 50% threshold or user preference)
+        [ ] Accumulation vs stop-loss GTT logic clarified
+[ ] 3. For each approved GTT:
+        [ ] Validate trigger price direction (BUY = below CMP, SELL = above CMP)
+        [ ] Verify quantity is within available margin
+        [ ] Confirm no duplicate GTTs on same symbol/direction
+        [ ] Log order details: symbol, qty, trigger, type, timestamp
+[ ] 4. Execute GTT placements via KiteMCP:
+        [ ] Call kite_place_gtt() for each approved GTT
+        [ ] Capture GTT ID from response
+        [ ] Verify execution success (status = ACTIVE or pending)
+[ ] 5. Document all placements:
+        [ ] Save to reports/YYYY-MM-DD_gtt_placement.json
+        [ ] Include: GTT ID, symbol, qty, trigger, transaction_type, timestamp, status
+        [ ] Create audit trail for compliance
+[ ] 6. Flag any execution failures:
+        [ ] Insufficient margin → pause and report
+        [ ] Duplicate GTT error → skip or modify
+        [ ] MCP timeout → fallback to manual execution documentation
+[ ] 7. Confirm all approved GTTs have been processed
+[ ] 8. Update GATE 3.5 status: PASS or FAIL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+### GTT Placement Decision Framework
+
+**BUY GTTs (Accumulation on Dips):**
+```
+Use when: Stock is in deep discount (MoS 25-50%) and you want to add on further falls
+Trigger: BELOW current price (e.g., CMP - 5-10%)
+Type: BUY order
+Qty: Tranche sizing (avoid 1:1 with existing holding to limit concentration)
+Example: CAMS at ₹625.90 CMP → Place BUY GTT at ₹580 (7% below)
+```
+
+**SELL GTTs (Downside Protection):**
+```
+Use when: Stock is moderate discount (MoS < 25%) and needs protection
+Trigger: BELOW cost basis (e.g., avg_price × 0.88 = 12% below cost)
+Type: SELL order (stop-loss)
+Qty: Match current holding quantity
+Example: CAMS at avg ₹713.99 → Place SELL STOP at ₹622 (13% below cost)
+```
+
+**SKIP GTT (Deep Value Protection):**
+```
+Use when: Stock is in exceptional discount (MoS ≥ 50%) 
+Decision: Skip stop-loss GTT entirely; hold through volatility
+Rationale: Fundamental thesis is strong enough; dips are buying opportunities
+Instead: Place target GTT when MoS reaches 30% (trailing exit)
+Example: ASHOKA (MoS 56.51%) → SKIP stop-loss, hold through 30% dips
+```
+
+### Output Format — GTT Placement Log
+
+```json
+{
+  "execution_date": "2026-03-31",
+  "execution_time": "09:30 IST",
+  "session_id": "GATE_3.5_20260331_1",
+  "placements": [
+    {
+      "gtt_id": "GTT_20260331_001",
+      "symbol": "CAMS",
+      "transaction_type": "BUY",
+      "trigger_price": 580.00,
+      "quantity": 130,
+      "current_price": 625.90,
+      "trigger_offset_pct": -7.3,
+      "rationale": "Accumulation GTT; stock in deep discount MoS 4.5%",
+      "status": "ACTIVE",
+      "execution_timestamp": "2026-03-31T09:30:15Z",
+      "notes": "User approved accumulation strategy for long-term hold"
+    },
+    {
+      "gtt_id": "GTT_20260331_002",
+      "symbol": "ENERGY",
+      "transaction_type": "BUY",
+      "trigger_price": 33.25,
+      "quantity": 2000,
+      "current_price": 35.00,
+      "trigger_offset_pct": -5.0,
+      "rationale": "Average down GTT; commodity hedge at NAV",
+      "status": "ACTIVE",
+      "execution_timestamp": "2026-03-31T09:31:02Z",
+      "notes": "User approved 5% dip accumulation strategy"
+    }
+  ],
+  "skipped_gtts": [
+    {
+      "symbol": "ASHOKA",
+      "reason": "MoS 56.51% >= 50% threshold — skip stop-loss per Rule R-25",
+      "decision": "Hold through volatility; no GTT"
+    },
+    {
+      "symbol": "VHL",
+      "reason": "MoS 74.8% >= 50% threshold — skip stop-loss per Rule R-25",
+      "decision": "Hold through volatility; no GTT"
+    },
+    {
+      "symbol": "JINDALPHOT",
+      "reason": "User decision: HOLD without GTT action",
+      "decision": "Watch for recovery; no GTT placed"
+    }
+  ],
+  "summary": {
+    "total_approved": 2,
+    "total_executed": 2,
+    "total_skipped": 3,
+    "total_margin_used": 75250,
+    "available_margin_remaining": 1924412,
+    "status": "PASS"
+  }
+}
+```
+
+### KiteMCP Execution Template
+
+```javascript
+// BUY GTT - Accumulation on dips
+await kite.placeGTT({
+  exchange: "NSE",
+  tradingsymbol: "CAMS",
+  transaction_type: "BUY",
+  quantity: 130,
+  trigger_price: 580.00,
+  limit_price: 580.00,  // Limit order on trigger
+  product: "CNC",       // CNC = cash and carry (long-term)
+  trigger_type: "single"
+});
+
+// SELL GTT - Stop-loss protection (if needed)
+await kite.placeGTT({
+  exchange: "NSE",
+  tradingsymbol: "CAMS",
+  transaction_type: "SELL",
+  quantity: 228,
+  trigger_price: 622.00,
+  limit_price: 622.00,
+  product: "CNC",
+  trigger_type: "single"
+});
+```
+
+### Error Recovery
+
+```
+IF margin insufficient:
+  → Log error to reports/YYYY-MM-DD_gtt_errors.json
+  → Suggest reducing qty or using BOD/MTF instead of CNC
+  → Ask user for qty adjustment approval
+  → Retry with approved qty
+
+IF duplicate GTT detected:
+  → Check if existing GTT matches trigger/qty
+  → If YES: Skip placement, mark as "duplicate avoided"
+  → If NO: Modify existing GTT via kite.modifyGTT()
+
+IF MCP timeout:
+  → Fallback to MANUAL execution
+  → Log GTT details to reports/YYYY-MM-DD_manual_gtts.md
+  → User executes via Kite web/app
+  → Document completion in session log
+
+IF trigger price validation fails:
+  → Check direction: BUY GTT must have trigger < CMP
+  → Check direction: SELL GTT must have trigger > cost basis
+  → Correct and retry with user approval
+```
+
+### Rules (Non-Negotiable)
+
+1. **GTTs must execute in SAME SESSION as approval.** No overnight delays.
+2. **Every GTT execution logs to JSON** for audit trail and tax reporting.
+3. **Stop-loss GTTs skip if MoS ≥ 50%.** Deep value deserves patience.
+4. **BUY GTTs use tranche sizing.** Never 1:1 with existing to avoid over-concentration.
+5. **Verify KiteMCP margin before executing.** No hard stops due to margin limits.
+6. **All GTT IDs captured and stored** for future modification/deletion.
 
 ---
 
@@ -534,7 +781,7 @@ DAILY REPORT CHECKLIST
                    - M&A activity
                    - Regulatory updates
                    - Bulk/block deals
-[ ] 5. Save as reports/YYYY-MM-DD_daily_report.docx
+[ ] 5. Save as reports/YYYY-MM-DD/YYYY-MM-DD_daily_report.md
 [ ] 6. Update Portfolio_Analysis_Report.xlsx with latest prices
 [ ] 7. Confirm file saved with today's date in filename
 [ ] 8. Report must exist BEFORE any order is placed today
@@ -544,7 +791,7 @@ DAILY REPORT CHECKLIST
 ### Report Filename Convention
 ```
 reports/
-├── 2026-03-25_daily_report.docx          ← Main briefing
+├── 2026-03-25_daily_report.md          ← Main briefing
 ├── 2026-03-25_portfolio_snapshot.json    ← Raw data
 ├── 2026-03-25_value_screen.json          ← IV calculations
 ├── 2026-03-25_gtt_audit.json             ← GTT status
@@ -789,30 +1036,6 @@ When generating stock analysis reports, include:
 
 ---
 
-## DOCX Skill
-
-Use this skill for creating, editing, or analyzing Word documents (.docx files). Load via: `/skill docx`
-
-### Quick Reference
-
-| Task | Approach |
-|------|----------|
-| Read/analyze content | `pandoc` or unpack for raw XML |
-| Create new document | Use `docx-js` library |
-| Edit existing document | Unpack → edit XML → repack |
-
-### Key Rules
-
-- **Set page size explicitly** - docx defaults to A4; use US Letter (12240 x 15840 DXA)
-- **Never use `\n`** - use separate Paragraph elements
-- **Never use unicode bullets** - use `LevelFormat.BULLET` with numbering config
-- **Always set table `width` with DXA** - never use `WidthType.PERCENTAGE`
-- **Tables need dual widths** - `columnWidths` array AND cell `width`, both must match
-- **Use `ShadingType.CLEAR`** - never SOLID for table shading
-- **Always add cell margins** - `margins: { top: 80, bottom: 80, left: 120, right: 120 }`
-
-### Dependencies
-- **docx**: `npm install docx` (local) or `npm install -g docx`
 - **pandoc**: Text extraction
 - **LibreOffice**: PDF conversion
 
@@ -822,14 +1045,13 @@ Use this skill for creating, editing, or analyzing Word documents (.docx files).
 
 ### Install Dependencies
 ```bash
-npm install docx
 ```
 
 ### Run Portfolio Report Generator
 ```bash
-node create_daily_report.js
+node src/create_master_markdown.js
 ```
-Output saved to `reports/YYYY-MM-DD_daily_report.docx`
+Output saved to `reports/YYYY-MM-DD/YYYY-MM-DD_daily_report.md`
 
 ### Testing
 No formal tests in this project. To add:
@@ -854,10 +1076,6 @@ No linter configured. To add ESLint: `npm init @eslint`
 - Use `require()` for Node.js modules
 - Use `camelCase` for variables/functions, `PascalCase` for classes
 
-### Document Generation (docx library)
-- Use helper functions for repetitive table/paragraph creation
-- Maintain consistent styling (Arial font, 11pt)
-- Color constants: `"1F4E79"` (headers), `"00B050"` (profit), `"C00000"` (loss)
 
 ### Error Handling
 ```javascript

@@ -21,6 +21,12 @@
     - Long: "best dividend stocks India NSE high ROE"
   </STEP_1_WEB_SEARCH>
 
+  <WEB_SEARCH_FALLBACK>
+    1. For each web source: retry 5 times with 5s delay.
+    2. If web search returns non-200 or tool error after retries, use alternate sources (MoneyControl, Economic Times, LiveMint, BSE/NSE).
+    3. If alternates fail, retry web sources again (5×, 5s delay). If still failing, reuse previous-day JSON and mark `"data_status": "STALE"` with `"fallback_reason"`.
+  </WEB_SEARCH_FALLBACK>
+
   <STEP_2_FILTERS>
     Every candidate MUST pass:
     - Market Cap > ₹500 Cr (Fail -> Skip)

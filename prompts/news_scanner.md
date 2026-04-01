@@ -164,8 +164,9 @@ Save to: `reports/YYYY-MM-DD_news_opportunities.json`
 - Max 5 portfolio alerts
 
 ## Error Recovery
-- If web search fails → try alternative source (MoneyControl → ET → LiveMint)
-- If all news sources fail → save `news: []` with `"scan_status": "FAILED"`
+- For each web source: retry 5 times with 5s delay.
+- If web search returns non-200 or tool error after retries, use alternate sources (MoneyControl, Economic Times, LiveMint, BSE/NSE).
+- If alternates fail, retry web sources again (5×, 5s delay). If still failing → reuse previous-day JSON and mark `"data_status": "STALE"` with `"fallback_reason"`.
 - If KiteMCP fails for price check → skip verification, note `"price_verified": false`
 
 ## Tools

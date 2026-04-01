@@ -11,66 +11,149 @@ const path = require('path');
 const config = require('./lib/config');
 
 const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-const reportsDir = path.join(__dirname, 'reports');
+const reportsDir = path.join(__dirname, '../reports');
 const staleThreshold = config.gates.staleThresholdMinutes;
+
+/**
+ * Find a gate file across flat root and organized structure.
+ * Returns the first matching path or null.
+ */
+function findGateFile(filename) {
+    const candidates = [
+        // Flat root: reports/YYYY-MM-DD_filename
+        path.join(reportsDir, filename),
+        // Organized by type
+        path.join(reportsDir, today, 'raw_data', filename), path.join(reportsDir, today, filename),
+        path.join(reportsDir, today, 'reports', filename.replace(`${today}_`, '')),
+        path.join(reportsDir, today, 'exports', filename.replace(`Portfolio_${today}`, 'Portfolio')),
+        path.join(reportsDir, today, 'exports', filename.replace(`Weekly_Portfolio_${today}`, 'Weekly_Portfolio')),
+    ];
+    for (const c of candidates) {
+        if (fs.existsSync(c)) return c;
+    }
+    return null;
+}
 
 const GATES = [
   {
     gate: 'GATE 0',
     label: 'Opportunity Scan',
-    file: path.join(reportsDir, `${today}_opportunities.json`),
-    required: false,   // warn but don't block
+    filename: `${today}_opportunities.json`,
+    required: false,
     tip: 'Ask AI: "Run opportunity-scanner for today"'
   },
   {
     gate: 'GATE 0.3',
     label: 'Commodity Scan',
-    file: path.join(reportsDir, `${today}_commodity_opportunities.json`),
+    filename: `${today}_commodity_opportunities.json`,
     required: false,
     tip: 'Ask AI: "Run commodity-scanner for today"'
   },
   {
     gate: 'GATE 0.5',
     label: 'News Scan',
-    file: path.join(reportsDir, `${today}_news_opportunities.json`),
+    filename: `${today}_news_opportunities.json`,
     required: false,
     tip: 'Ask AI: "Run news-scanner for today"'
   },
   {
     gate: 'GATE 1',
     label: 'Portfolio Scan',
-    file: path.join(reportsDir, `${today}_portfolio_snapshot.json`),
+    filename: `${today}_portfolio_snapshot.json`,
     required: true,
     tip: 'Ask AI: "Run portfolio-scanner — fetch holdings from Kite"'
   },
   {
     gate: 'GATE 2',
     label: 'Intrinsic Value Screen',
-    file: path.join(reportsDir, `${today}_value_screen.json`),
+    filename: `${today}_value_screen.json`,
     required: true,
     tip: 'Ask AI: "Run intrinsic-value-scanner on today\'s holdings"'
   },
   {
     gate: 'GATE 3',
     label: 'GTT Audit',
-    file: path.join(reportsDir, `${today}_gtt_audit.json`),
+    filename: `${today}_gtt_audit.json`,
     required: true,
     tip: 'Ask AI: "Run gtt-manager audit for today"'
   },
   {
     gate: 'GATE 4',
-    label: 'Daily Report (.docx)',
-    file: path.join(reportsDir, `${today}_daily_report.docx`),
+    label: 'Daily Report (.md)',
+    filename: `${today}_daily_report.md`,
     required: true,
     tip: 'Run: npm run report'
   },
   {
     gate: 'GATE 4.5',
     label: 'Excel Export (.xlsx)',
-    file: path.join(reportsDir, `Portfolio_${today}.xlsx`),
+    filename: `Portfolio_${today}.xlsx`,
     required: true,
     tip: 'Run: npm run export'
   },
+  {
+    gate: 'GATE 5',
+    label: 'Individual Reports',
+    filename: `${today}_portfolio_report.md`,
+    required: false,
+    tip: 'Run individual deep-dive reports generation'
+  },
+  {
+    gate: 'GATE 6',
+    label: 'Agent Reports Summary',
+    filename: `${today}_GATE6_AGENT_REPORTS_SUMMARY.md`,
+    required: false,
+    tip: 'Compile agent summary'
+  },
+  {
+    gate: 'GATE 7',
+    label: 'Weekly Export',
+    filename: `Weekly_Portfolio_${today}.xlsx`,
+    required: false,
+    tip: 'Generate Weekly Portfolio Excel Export'
+  },
+  {
+    gate: 'GATE 8',
+    label: 'Verification & Audit',
+    filename: `${today}_GATE8_COMPREHENSIVE_VERIFICATION_REPORT.md`,
+    required: false,
+    tip: 'Run verification script'
+  },
+  {
+    gate: 'GATE 9',
+    label: 'Archive Gate',
+    filename: `${today}_ARCHIVE_MANIFEST.json`,
+    required: false,
+    tip: 'Run archive script'
+  },
+  {
+    gate: 'GATE 10',
+    label: 'Risk Assessment',
+    filename: `${today}_risk_assessment.json`,
+    required: false,
+    tip: 'Run risk assessment (concentration, sector exposure)'
+  },
+  {
+    gate: 'GATE 11',
+    label: 'Rebalancing Recommendation',
+    filename: `${today}_rebalancing.json`,
+    required: false,
+    tip: 'Run rebalancing logic'
+  },
+  {
+    gate: 'GATE 12',
+    label: 'Tax Optimization',
+    filename: `${today}_tax_optimization.json`,
+    required: false,
+    tip: 'Run tax optimization script'
+  },
+  {
+    gate: 'GATE 13',
+    label: 'Dividend Calendar',
+    filename: `${today}_dividend_calendar.json`,
+    required: false,
+    tip: 'Run dividend calendar script'
+  }
 ];
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -97,8 +180,9 @@ let hardBlock = false;
 let warnings  = 0;
 
 for (const g of GATES) {
-  const exists = fs.existsSync(g.file);
-  const age    = exists ? fileAgeMinutes(g.file) : null;
+  const foundPath = findGateFile(g.filename);
+  const exists = foundPath !== null;
+  const age    = exists ? fileAgeMinutes(foundPath) : null;
   const stale  = age !== null && age > staleThreshold;
 
   if (exists && !stale) {

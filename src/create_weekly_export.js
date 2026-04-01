@@ -12,21 +12,23 @@ const weekStartStr = weekStart.toISOString().split('T')[0];
 const reportDate = weekEnd;
 const weekStartDate = weekStartStr;
 
+const REPORTS_DIR = path.join(__dirname, '../reports');
+
 /**
  * Find a report file — check reports/ first, then archive/YYYY-MM-DD/
  * This ensures weekly comparisons work even after archiving.
  */
 function findReport(date, filename) {
     // Check today's reports root first
-    const rootPath = path.join('reports', `${date}_${filename}`);
+    const rootPath = path.join(REPORTS_DIR, `${date}_${filename}`);
     if (fs.existsSync(rootPath)) return readJsonFile(rootPath);
 
     // Check archive/YYYY-MM-DD/ folder (date prefix stripped)
-    const archivePath = path.join('reports', 'archive', date, filename);
+    const archivePath = path.join(REPORTS_DIR, 'archive', date, filename);
     if (fs.existsSync(archivePath)) return readJsonFile(archivePath);
 
     // Check archive with date prefix (in case not stripped)
-    const archiveWithDate = path.join('reports', 'archive', date, `${date}_${filename}`);
+    const archiveWithDate = path.join(REPORTS_DIR, 'archive', date, `${date}_${filename}`);
     if (fs.existsSync(archiveWithDate)) return readJsonFile(archiveWithDate);
 
     return null;
@@ -48,16 +50,23 @@ const rawHoldings = currentPortfolio?.holdings || [
 
 const lastWeekHoldings = lastWeekPortfolio?.holdings || [];
 
-const holdings = rawHoldings.map(h => ({
-    symbol: h.symbol,
-    quantity: h.quantity,
-    avg_price: h.average_price,
-    current_price: h.last_price,
-    invested: h.quantity * h.average_price,
-    current_value: h.quantity * h.last_price,
-    pnl: h.pnl,
-    pnl_percent: h.pnl_percent
-}));
+const holdings = rawHoldings.map(h => {
+    const qty = h.quantity || h.qty || 0;
+    const avgPrice = h.average_price || h.avg_price || 0;
+    const curPrice = h.current_price || h.last_price || 0;
+    const pnl = h.pnl || ((curPrice - avgPrice) * qty);
+    const pnlPct = h.pnl_percent || h.pnl_pct || (avgPrice > 0 ? ((curPrice - avgPrice) / avgPrice * 100) : 0);
+    return {
+        symbol: h.symbol,
+        quantity: qty,
+        avg_price: avgPrice,
+        current_price: curPrice,
+        invested: qty * avgPrice,
+        current_value: qty * curPrice,
+        pnl: pnl,
+        pnl_percent: pnlPct
+    };
+});
 
 const lastWeekMap = new Map(lastWeekHoldings.map(h => [h.symbol, h]));
 
@@ -92,9 +101,22 @@ const thisWeekValue = holdings.reduce((sum, h) => sum + h.current_value, 0);
 const thisWeekInvested = holdings.reduce((sum, h) => sum + h.invested, 0);
 const thisWeekPnl = holdings.reduce((sum, h) => sum + h.pnl, 0);
 
-const lastWeekValue = lastWeekHoldings.reduce((sum, h) => sum + (h.quantity * h.last_price), 0);
-const lastWeekInvested = lastWeekHoldings.reduce((sum, h) => sum + (h.quantity * h.average_price), 0);
-const lastWeekPnl = lastWeekHoldings.reduce((sum, h) => sum + ((h.last_price - h.average_price) * h.quantity), 0);
+const lastWeekValue = lastWeekHoldings.reduce((sum, h) => {
+    const qty = h.quantity || h.qty || 0;
+    const curPrice = h.current_price || h.last_price || 0;
+    return sum + (qty * curPrice);
+}, 0);
+const lastWeekInvested = lastWeekHoldings.reduce((sum, h) => {
+    const qty = h.quantity || h.qty || 0;
+    const avgPrice = h.average_price || h.avg_price || 0;
+    return sum + (qty * avgPrice);
+}, 0);
+const lastWeekPnl = lastWeekHoldings.reduce((sum, h) => {
+    const qty = h.quantity || h.qty || 0;
+    const curPrice = h.current_price || h.last_price || 0;
+    const avgPrice = h.average_price || h.avg_price || 0;
+    return sum + ((curPrice - avgPrice) * qty);
+}, 0);
 
 const valueChange = thisWeekValue - lastWeekValue;
 const valueChangePct = lastWeekValue > 0 ? (valueChange / lastWeekValue * 100) : 0;
@@ -103,7 +125,7 @@ const pnlChange = thisWeekPnl - lastWeekPnl;
 summarySheet.addRow({ metric: 'Portfolio Value', this_week: Math.round(thisWeekValue), last_week: Math.round(lastWeekValue), change: Math.round(valueChange), change_pct: parseFloat(valueChangePct.toFixed(1)) + '%' });
 summarySheet.addRow({ metric: 'Total Investment', this_week: Math.round(thisWeekInvested), last_week: Math.round(lastWeekInvested) });
 summarySheet.addRow({ metric: 'Unrealized P&L', this_week: Math.round(thisWeekPnl), last_week: Math.round(lastWeekPnl), change: Math.round(pnlChange) });
-summarySheet.addRow({ metric: 'P&L %', this_week: parseFloat((thisWeekPnl / thisWeekInvested * 100).toFixed(1)) + '%', last_week: parseFloat((lastWeekPnl / lastWeekInvested * 100).toFixed(1)) + '%' });
+summarySheet.addRow({ metric: 'P&L %', this_week: thisWeekInvested > 0 ? parseFloat((thisWeekPnl / thisWeekInvested * 100).toFixed(1)) + '%' : 'N/A', last_week: lastWeekInvested > 0 ? parseFloat((lastWeekPnl / lastWeekInvested * 100).toFixed(1)) + '%' : 'N/A' });
 
 const holdingsSheet = wb.addWorksheet('Holdings Comparison', {
     properties: { tabColor: { argb: '1F4E79' } }
@@ -125,7 +147,8 @@ holdingsSheet.getRow(1).alignment = { horizontal: 'center' };
 
 holdings.forEach(h => {
     const lastWeekHolding = lastWeekMap.get(h.symbol);
-    const wowChange = lastWeekHolding ? (h.current_price - lastWeekHolding.last_price) * h.quantity : 0;
+    const lastWeekPrice = lastWeekHolding ? (lastWeekHolding.current_price || lastWeekHolding.last_price || 0) : 0;
+    const wowChange = lastWeekHolding ? (h.current_price - lastWeekPrice) * h.quantity : 0;
     const action = h.pnl_percent > 10 ? 'HOLD' : h.pnl_percent > 0 ? 'HOLD' : h.pnl_percent < -10 ? 'TAX LOSS HARVEST' : 'WATCH';
     
     holdingsSheet.addRow({
@@ -157,7 +180,9 @@ const sortedByPerformance = [...holdings].sort((a, b) => b.pnl_percent - a.pnl_p
 
 sortedByPerformance.forEach(h => {
     const lastWeekHolding = lastWeekMap.get(h.symbol);
-    const lastWeekPnlPct = lastWeekHolding ? ((lastWeekHolding.last_price - lastWeekHolding.average_price) / lastWeekHolding.average_price * 100) : 0;
+    const lwPrice = lastWeekHolding ? (lastWeekHolding.current_price || lastWeekHolding.last_price || 0) : 0;
+    const lwAvg = lastWeekHolding ? (lastWeekHolding.average_price || lastWeekHolding.avg_price || 0) : 0;
+    const lastWeekPnlPct = lastWeekHolding && lwAvg > 0 ? ((lwPrice - lwAvg) / lwAvg * 100) : 0;
     const change = h.pnl_percent - lastWeekPnlPct;
     
     performanceSheet.addRow({
@@ -183,15 +208,17 @@ commoditySheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFF' } };
 commoditySheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'C2185B' } };
 
 commodities.forEach(c => {
+    const price = typeof c.current_price === 'number' ? c.current_price : (c.price || 0);
+    const changePct = c.day_change_pct || c.change_percent || 0;
     commoditySheet.addRow({
-        symbol: c.symbol,
-        price: c.price || 0,
-        change_percent: c.change_percent ? parseFloat(c.change_percent.toFixed(2)) : 0,
+        symbol: c.commodity || c.symbol || 'N/A',
+        price: price,
+        change_percent: typeof changePct === 'number' ? parseFloat(changePct.toFixed(2)) : changePct,
         trend: c.trend || 'NEUTRAL'
     });
 });
 
-const outputPath = path.join(__dirname, 'reports', `Weekly_Portfolio_${reportDate}.xlsx`);
+const outputPath = path.join(__dirname, '../reports', `Weekly_Portfolio_${reportDate}.xlsx`);
 wb.xlsx.writeFile(outputPath).then(() => {
     console.log(`Weekly Portfolio Excel saved to: ${outputPath}`);
     console.log('\n=== WEEKLY SUMMARY ===');
