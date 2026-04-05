@@ -16,19 +16,29 @@ Search and track MCX (Multi Commodity Exchange) commodity prices and identify in
 
 ## Execution Steps
 
-### Step 1: Search Current Prices
-For each commodity, run ONE focused web search:
+### Step 1: Fetch Prices via Direct URL (PRIMARY METHOD)
+For each commodity, use `webfetch` to get live prices from these 5paisa URLs:
 
+| Commodity | URL |
+|-----------|-----|
+| Gold | `https://www.5paisa.com/commodity-trading/mcx-gold-price` |
+| Silver | `https://www.5paisa.com/commodity-trading/mcx-silver-price` |
+| Crude Oil | `https://www.5paisa.com/commodity-trading/mcx-crudeoil-price` |
+| Natural Gas | `https://www.5paisa.com/commodity-trading/mcx-naturalgas-price` |
+
+**How to extract from 5paisa pages:**
+- Look for price: `₹XX,XXX` format near the commodity name
+- Look for change: `(+X.XX%)` or `(-X.XX%)` after the price
+- Look for day range: "Low" and "High" values
+
+**Example extraction:**
 ```
-Gold:         "MCX gold price today India"
-Silver:       "MCX silver price today India"
-Crude Oil:    "MCX crude oil price today India"
-Natural Gas:  "MCX natural gas price today India"
+From: ₹10,410.00  |  1,157 (12.5%)
+Extract: price = 10410, change_percent = 12.5
 ```
 
-**Optional** (if time permits):
-- `"Gold silver ratio India today"` → useful for relative value
-- `"Commodity outlook India 2026"` → macro context
+### Step 2: Web Search Fallback (If direct fetch fails)
+If webfetch fails, use web search as backup:
 
 **Web Search Fallback Rule:**
 - For each web source: retry 5 times with 5s delay.

@@ -1,0 +1,852 @@
+/**
+ * KiteMCP Portfolio Dashboard - Client-Side Application
+ * Handles data fetching, rendering, and interactivity
+ */
+
+(function() {
+    'use strict';
+
+    // ============================================
+    // Configuration
+    // ============================================
+    const CONFIG = {
+        REFRESH_INTERVAL: 30000, // 30 seconds
+        MARKET_OPEN: 9 * 60 + 15, // 9:15 AM IST in minutes
+        MARKET_CLOSE: 15 * 60 + 30, // 3:30 PM IST in minutes
+        API_BASE: '/api'
+    };
+
+    // ============================================
+    // State Management
+    // ============================================
+    const state = {
+        currentDate: new Date().toISOString().split('T')[0],
+        availableDates: [],
+        dashboardData: null,
+        deepValueData: null,
+        marketStatus: { isOpen: false },
+        autoRefreshTimer: null,
+        isRefreshing: false,
+        activeTab: 'holdings',
+        activeHorizon: 'all',
+        isMasked: false
+    };
+
+    // ============================================
+    // DOM Elements
+    // ============================================
+    const elements = {
+        loadingOverlay: document.getElementById('loadingOverlay'),
+        reportDate: document.getElementById('reportDate'),
+        refreshBtn: document.getElementById('refreshBtn'),
+        lastUpdated: document.getElementById('lastUpdated'),
+        // Market Status
+        marketStatus: document.getElementById('marketStatus'),
+        
+        // Mask Toggle
+        maskToggleBtn: document.getElementById('maskToggleBtn'),
+        maskIcon: document.getElementById('maskIcon'),
+        
+        // Summary cards
+        totalValue: document.getElementById('totalValue'),
+        totalPnl: document.getElementById('totalPnl'),
+        totalPnlPct: document.getElementById('totalPnlPct'),
+        availableMargin: document.getElementById('availableMargin'),
+        holdingsCount: document.getElementById('holdingsCount'),
+        
+        // Holdings table
+        holdingsBody: document.getElementById('holdingsBody'),
+        holdingsSearch: document.getElementById('holdingsSearch'),
+        holdingsSort: document.getElementById('holdingsSort'),
+        
+        // Deep discounts
+        discountsGrid: document.getElementById('discountsGrid'),
+        discountCount: document.getElementById('discountCount'),
+        
+        // GTT
+        protectedCount: document.getElementById('protectedCount'),
+        unprotectedCount: document.getElementById('unprotectedCount'),
+        gttList: document.getElementById('gttList'),
+        
+        // Opportunities
+        opportunitiesGrid: document.getElementById('opportunitiesGrid'),
+        
+        // Commodities
+        commoditiesGrid: document.getElementById('commoditiesGrid'),
+        
+        // Deep Value Screener
+        deepValueTable: document.getElementById('deepValueTable'),
+        deepValueBody: document.getElementById('deepValueBody'),
+        deepValueSearch: document.getElementById('deepValueSearch'),
+        deepValueSector: document.getElementById('deepValueSector'),
+        
+        // Tabs
+        tabs: document.querySelectorAll('.tab'),
+        tabPanels: document.querySelectorAll('.tab-panel'),
+        
+        // Horizon filters
+        horizonFilters: document.querySelectorAll('.filter-btn')
+    };
+
+    // ============================================
+    // Utility Functions
+    // ============================================
+    function formatCurrency(value) {
+        if (state.isMasked) return '••••••';
+        if (value == null || isNaN(value)) return '₹--';
+        const abs = Math.abs(value);
+        if (abs >= 10000000) return `₹${(value / 10000000).toFixed(2)}Cr`;
+        if (abs >= 100000) return `₹${(value / 100000).toFixed(2)}L`;
+        return `₹${value.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
+    }
+
+    function formatPercent(value) {
+        if (value == null || isNaN(value)) return '--%';
+        const sign = value >= 0 ? '+' : '';
+        return `${sign}${value.toFixed(2)}%`;
+    }
+
+    function escapeHtml(text) {
+        if (text == null) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function formatTime(date) {
+        return date.toLocaleTimeString('en-IN', { 
+            hour: '2-digit', 
+            minute: '2-digit',
+            hour12: false 
+        });
+    }
+
+    // ============================================
+    // API Functions
+    // ============================================
+    async function fetchAPI(endpoint) {
+        const url = `${CONFIG.API_BASE}${endpoint}`;
+        try {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return await response.json();
+        } catch (error) {
+            console.error(`API Error (${endpoint}):`, error);
+            return null;
+        }
+    }
+
+    async function fetchDashboardData(date) {
+        return await fetchAPI(`/dashboard?date=${date}`);
+    }
+
+    async function fetchMarketStatus() {
+        return await fetchAPI('/market-status');
+    }
+
+    async function fetchAvailableDates() {
+        const data = await fetchAPI('/dates');
+        return data?.dates || [];
+    }
+
+    // ============================================
+    // Market Status
+    // ============================================
+    function updateMarketStatus(status) {
+        state.marketStatus = status;
+        const { isOpen } = status;
+        
+        elements.marketStatus.classList.remove('open', 'closed');
+        elements.marketStatus.classList.add(isOpen ? 'open' : 'closed');
+        
+        const statusText = isOpen ? 'Market Open' : 'Market Closed';
+        const nextText = isOpen 
+            ? `Closes at ${status.nextClose || '3:30 PM'}`
+            : `Opens ${status.nextOpen || '9:15 AM'}`;
+        
+        elements.marketStatus.querySelector('.status-text').textContent = `${statusText} · ${nextText}`;
+    }
+
+    // ============================================
+    // Auto Refresh
+    // ============================================
+    function startAutoRefresh() {
+        if (state.autoRefreshTimer) {
+            clearInterval(state.autoRefreshTimer);
+        }
+        
+        state.autoRefreshTimer = setInterval(() => {
+            if (state.marketStatus.isOpen && !state.isRefreshing) {
+                loadDashboard(state.currentDate);
+            }
+        }, CONFIG.REFRESH_INTERVAL);
+    }
+
+    function stopAutoRefresh() {
+        if (state.autoRefreshTimer) {
+            clearInterval(state.autoRefreshTimer);
+            state.autoRefreshTimer = null;
+        }
+    }
+
+    // ============================================
+    // Render Functions - Summary Cards
+    // ============================================
+    function renderSummaryCards(data) {
+        const portfolio = data?.portfolio;
+        
+        if (portfolio) {
+            const totalValue = portfolio.total_value || 0;
+            const totalPnl = portfolio.total_pnl || 0;
+            const totalPnlPct = portfolio.total_pnl_pct || 0;
+            const margin = portfolio.available_margin || 0;
+            const holdings = portfolio.holdings?.length || 0;
+            
+            elements.totalValue.textContent = formatCurrency(totalValue);
+            elements.totalPnl.textContent = formatCurrency(totalPnl);
+            elements.totalPnlPct.textContent = formatPercent(totalPnlPct);
+            elements.availableMargin.textContent = formatCurrency(margin);
+            elements.holdingsCount.textContent = holdings;
+            
+            // Update P&L card colors
+            const pnlCard = elements.totalPnl.closest('.summary-card');
+            pnlCard.classList.remove('positive', 'negative');
+            pnlCard.classList.add(totalPnl >= 0 ? 'positive' : 'negative');
+        }
+    }
+
+    // ============================================
+    // Render Functions - Holdings Table
+    // ============================================
+    function renderHoldingsTable(data) {
+        const portfolio = data?.portfolio;
+        if (!portfolio?.holdings?.length) {
+            elements.holdingsBody.innerHTML = '<tr><td colspan="9" class="empty-state">No holdings data available</td></tr>';
+            return;
+        }
+        
+        let holdings = [...portfolio.holdings];
+        
+        // Apply search filter
+        const searchTerm = elements.holdingsSearch.value.toLowerCase();
+        if (searchTerm) {
+            holdings = holdings.filter(h => 
+                (h.symbol || '').toLowerCase().includes(searchTerm) ||
+                (h.company_name || '').toLowerCase().includes(searchTerm)
+            );
+        }
+        
+        // Apply sorting
+        const sortBy = elements.holdingsSort.value;
+        holdings.sort((a, b) => {
+            switch (sortBy) {
+                case 'value':
+                    return (b.current_value || 0) - (a.current_value || 0);
+                case 'pnl':
+                    return (b.pnl || 0) - (a.pnl || 0);
+                case 'symbol':
+                    return (a.symbol || '').localeCompare(b.symbol || '');
+                default:
+                    return 0;
+            }
+        });
+        
+        // Build table rows
+        const rows = holdings.map(h => {
+            const pnl = h.pnl || 0;
+            const pnlPct = h.pnl_pct || 0;
+            const pnlClass = pnl >= 0 ? 'pnl-positive' : 'pnl-negative';
+            const statusClass = pnlPct > 20 ? 'profit' : (pnlPct < -15 ? 'loss' : 'hold');
+            const statusLabel = pnlPct > 20 ? 'PROFIT' : (pnlPct < -15 ? 'CRITICAL' : 'HOLD');
+            
+            return `
+                <tr>
+                    <td class="symbol-cell">${escapeHtml(h.symbol)}</td>
+                    <td>${escapeHtml(h.company_name || h.exchange)}</td>
+                    <td class="text-right">${h.quantity || h.qty || 0}</td>
+                    <td class="text-right price-cell">₹${(h.average_price || h.avg_price || 0).toFixed(2)}</td>
+                    <td class="text-right price-cell">₹${(h.last_price || h.current_price || 0).toFixed(2)}</td>
+                    <td class="text-right price-cell">${formatCurrency(h.current_value)}</td>
+                    <td class="text-right ${pnlClass}">${formatCurrency(pnl)}</td>
+                    <td class="text-right ${pnlClass}">${formatPercent(pnlPct)}</td>
+                    <td><span class="status-badge ${statusClass}">${statusLabel}</span></td>
+                </tr>
+            `;
+        }).join('');
+        
+        elements.holdingsBody.innerHTML = rows;
+    }
+
+    // ============================================
+    // Render Functions - Deep Discounts
+    // ============================================
+    function renderDeepDiscounts(data) {
+        const valuescreen = data?.valuescreen;
+        
+        // Get deep discounts from holdings_analysis
+        let discounts = [];
+        if (valuescreen?.holdings_analysis) {
+            discounts = valuescreen.holdings_analysis.filter(h => {
+                const mos = h.margin_of_safety?.mos_pct || 0;
+                return mos > 25;
+            });
+        }
+        
+        // Fallback to deep_discount_stocks
+        if (!discounts.length && valuescreen?.deep_discount_stocks) {
+            discounts = Array.isArray(valuescreen.deep_discount_stocks) ? valuescreen.deep_discount_stocks : [];
+        }
+        
+        elements.discountCount.textContent = discounts.length;
+        
+        if (!discounts.length) {
+            elements.discountsGrid.innerHTML = '<p class="empty-state">No deep discount stocks found (MoS > 25%)</p>';
+            return;
+        }
+        
+        const cards = discounts.map(s => {
+            const mos = s.margin_of_safety?.mos_pct || s.mos_pct || 0;
+            const price = s.current_price || s.last_price || 0;
+            const iv = s.valuation?.intrinsic_value_avg || s.valuation?.graham_number || s.intrinsic_value || 0;
+            const action = s.action_signal || s.action || 'ACCUMULATE';
+            
+            return `
+                <article class="discount-card">
+                    <div class="discount-header">
+                        <span class="discount-symbol">${escapeHtml(s.symbol)}</span>
+                        <span class="discount-mos">${mos.toFixed(1)}% MoS</span>
+                    </div>
+                    <div class="discount-prices">
+                        <div class="discount-price">
+                            <span class="discount-price-label">CMP</span>
+                            <span class="discount-price-value">₹${price.toFixed(2)}</span>
+                        </div>
+                        <div class="discount-price">
+                            <span class="discount-price-label">Intrinsic</span>
+                            <span class="discount-price-value">₹${iv.toFixed(0)}</span>
+                        </div>
+                    </div>
+                    <div class="discount-action">${action}</div>
+                </article>
+            `;
+        }).join('');
+        
+        elements.discountsGrid.innerHTML = cards;
+    }
+
+    // ============================================
+    // Render Functions - GTT Status
+    // ============================================
+    function renderGTTStatus(data) {
+        const gtt = data?.gtt;
+        
+        const unprotectedList = gtt?.unprotected_holdings || [];
+        const protectedList = gtt?.protected_holdings || [];
+        
+        // Also get holdings needing GTT from the recommendations
+        const holdingsNeedingGtt = gtt?.holdings_needing_gtt || [];
+        
+        // Calculate effective counts (active GTTs + recommended GTTs)
+        const needsStopLoss = holdingsNeedingGtt.filter(h => h.recommended_action?.includes('STOP-LOSS')).map(h => h.symbol);
+        const needsTarget = holdingsNeedingGtt.filter(h => h.recommended_action?.includes('TARGET')).map(h => h.symbol);
+        
+        // Protected = active GTTs + holdings with recommendations
+        const effectiveProtected = [...new Set([...protectedList, ...needsStopLoss, ...needsTarget])];
+        const effectiveUnprotected = unprotectedList.filter(s => !effectiveProtected.includes(s));
+        
+        elements.protectedCount.textContent = effectiveProtected.length;
+        elements.unprotectedCount.textContent = effectiveUnprotected.length;
+        
+        if (!effectiveProtected.length && !effectiveUnprotected.length) {
+            elements.gttList.innerHTML = '<p class="empty-state">No GTT data available</p>';
+            return;
+        }
+        
+        const items = [];
+        
+        // Add protected holdings (with active GTTs or recommendations)
+        effectiveProtected.forEach(symbol => {
+            let statusLabel = 'Protected';
+            let statusClass = 'protected';
+            
+            // Check if it needs a GTT recommendation
+            const holding = holdingsNeedingGtt.find(h => h.symbol === symbol);
+            if (holding?.recommended_action) {
+                if (holding.recommended_action.includes('STOP-LOSS')) {
+                    statusLabel = 'Stop-Loss';
+                    statusClass = 'recommended';
+                } else if (holding.recommended_action.includes('TARGET')) {
+                    statusLabel = 'Target';
+                    statusClass = 'recommended';
+                } else if (holding.recommended_action.includes('NO GTT')) {
+                    statusLabel = 'N/A (ETF)';
+                    statusClass = 'na';
+                } else {
+                    statusLabel = 'Protected';
+                }
+            }
+            
+            items.push(`
+                <div class="gtt-item">
+                    <span class="symbol">${escapeHtml(symbol)}</span>
+                    <span class="status ${statusClass}">${statusLabel}</span>
+                </div>
+            `);
+        });
+        
+        // Add unprotected holdings
+        effectiveUnprotected.forEach(symbol => {
+            items.push(`
+                <div class="gtt-item unprotected">
+                    <span class="symbol">${escapeHtml(symbol)}</span>
+                    <span class="status unprotected">Unprotected</span>
+                </div>
+            `);
+        });
+        
+        // Add section for GTT recommendations if any
+        if (holdingsNeedingGtt.length > 0) {
+            const recommendations = holdingsNeedingGtt.filter(h => h.recommended_action && !h.recommended_action.includes('NO GTT') && !h.recommended_action.includes('HOLD'));
+            if (recommendations.length > 0) {
+                items.push(`<div class="gtt-section-title">Recommendations</div>`);
+                recommendations.forEach(h => {
+                    items.push(`
+                        <div class="gtt-item recommendation">
+                            <span class="symbol">${escapeHtml(h.symbol)}</span>
+                            <span class="recommendation-text">${escapeHtml(h.recommended_action)} @ ${h.trigger_price ? '₹'+h.trigger_price.toFixed(2) : 'N/A'}</span>
+                        </div>
+                    `);
+                });
+            }
+        }
+        
+        elements.gttList.innerHTML = items.join('');
+    }
+
+    // ============================================
+    // Render Functions - Opportunities
+    // ============================================
+    function renderOpportunities(data) {
+        const opp = data?.opportunities;
+        
+        let opportunities = [];
+        
+        if (opp?.horizons) {
+            // New format
+            const horizons = opp.horizons;
+            if (horizons.short_term?.opportunities) {
+                horizons.short_term.opportunities.forEach(o => {
+                    opportunities.push({ ...o, horizon: 'short' });
+                });
+            }
+            if (horizons.medium_term?.opportunities) {
+                horizons.medium_term.opportunities.forEach(o => {
+                    opportunities.push({ ...o, horizon: 'medium' });
+                });
+            }
+            if (horizons.long_term?.opportunities) {
+                horizons.long_term.opportunities.forEach(o => {
+                    opportunities.push({ ...o, horizon: 'long' });
+                });
+            }
+        } else if (opp?.opportunities) {
+            // Old format
+            opportunities = Array.isArray(opp.opportunities) ? opp.opportunities : [];
+        }
+        
+        // Apply horizon filter
+        if (state.activeHorizon !== 'all') {
+            opportunities = opportunities.filter(o => 
+                (o.horizon || o.horizons || '').toLowerCase().startsWith(state.activeHorizon)
+            );
+        }
+        
+        if (!opportunities.length) {
+            elements.opportunitiesGrid.innerHTML = '<p class="empty-state">No investment opportunities found</p>';
+            return;
+        }
+        
+        const cards = opportunities.map(o => {
+            const change = o.change_pct || 0;
+            const changeClass = change >= 0 ? 'positive' : 'negative';
+            const horizonLabel = (o.horizon || 'SHORT').toUpperCase();
+            
+            return `
+                <article class="opportunity-card">
+                    <div class="opp-header">
+                        <span class="opp-symbol">${escapeHtml(o.symbol)}</span>
+                        <span class="opp-horizon">${horizonLabel}</span>
+                    </div>
+                    <div class="opp-sector">${escapeHtml(o.sector || o.company_name || '')}</div>
+                    <div class="opp-change ${changeClass}">${formatPercent(change)}</div>
+                    <div class="opp-recommendation">${escapeHtml(o.recommendation || o.pattern || 'WATCH')}</div>
+                </article>
+            `;
+        }).join('');
+        
+        elements.opportunitiesGrid.innerHTML = cards;
+    }
+
+    // ============================================
+    // Render Functions - Commodities
+    // ============================================
+    function renderCommodities(data) {
+        const commoditiesData = data?.commodities;
+        const commodities = commoditiesData?.commodities || (Array.isArray(commoditiesData) ? commoditiesData : []);
+        
+        if (!commodities?.length) {
+            elements.commoditiesGrid.innerHTML = '<p class="empty-state">No commodity data available</p>';
+            return;
+        }
+        
+        const cards = commodities.map(c => {
+            const change = c.change_percent || c.change_pct || 0;
+            const changeClass = change >= 0 ? 'positive' : 'negative';
+            const trend = (c.trend || '').toLowerCase();
+            
+            // Handle null prices - show "N/A" instead of 0
+            const price = c.price || c.current_price;
+            const priceDisplay = price != null ? `₹${price.toLocaleString('en-IN')}` : 'N/A';
+            const changeDisplay = c.current_price != null ? formatPercent(change) : '--';
+            
+            return `
+                <article class="commodity-card">
+                    <div class="commodity-name">${escapeHtml(c.symbol || c.commodity)}</div>
+                    <div class="commodity-price">${priceDisplay}</div>
+                    <div class="commodity-change ${c.current_price != null ? changeClass : 'text-muted'}">${changeDisplay}</div>
+                    <span class="commodity-trend ${trend}">${escapeHtml(c.trend || c.action || 'HOLD')}</span>
+                </article>
+            `;
+        }).join('');
+        
+        elements.commoditiesGrid.innerHTML = cards;
+    }
+
+    // ============================================
+    // Render Functions - Deep Value
+    // ============================================
+    function renderDeepValueScreener() {
+        if (!state.deepValueData || !state.deepValueData.length) {
+            elements.deepValueBody.innerHTML = '<tr><td colspan="9" class="empty-state">No deep value data available</td></tr>';
+            return;
+        }
+
+        let data = [...state.deepValueData];
+
+        // Apply sector filter
+        const sector = elements.deepValueSector.value;
+        if (sector !== 'all') {
+            data = data.filter(d => d.category === sector);
+        }
+
+        // Apply search filter
+        const searchTerm = elements.deepValueSearch.value.toLowerCase();
+        if (searchTerm) {
+            data = data.filter(d => 
+                (d.company || '').toLowerCase().includes(searchTerm) ||
+                (d.ticker || '').toLowerCase().includes(searchTerm)
+            );
+        }
+
+        // Build table rows
+        const rows = data.map(d => {
+            const riskClass = (d.risk || '').toLowerCase();
+            let scoreClass = 'text-muted';
+            if (d.score) {
+                const numScore = parseInt(d.score.split('/')[0]);
+                if (numScore >= 8) scoreClass = 'pnl-positive';
+                else if (numScore >= 6) scoreClass = 'text-warning';
+            }
+
+            return `
+                <tr>
+                    <td>${escapeHtml(d.company)}</td>
+                    <td class="symbol-cell">${escapeHtml(d.ticker)}</td>
+                    <td><span class="badge badge-outline">${escapeHtml(d.category)}</span></td>
+                    <td class="text-right">${(d.pe || 0).toFixed(1)}</td>
+                    <td class="text-right">${(d.pb || 0).toFixed(2)}</td>
+                    <td class="text-right">${(d.roe || 0).toFixed(1)}%</td>
+                    <td class="text-right">${(d.de || 0).toFixed(2)}</td>
+                    <td class="text-right ${scoreClass}">${escapeHtml(d.score)}</td>
+                    <td><span class="status-badge risk-${riskClass}">${escapeHtml(d.risk)}</span></td>
+                </tr>
+            `;
+        }).join('');
+        
+        elements.deepValueBody.innerHTML = rows;
+    }
+
+    function populateDeepValueSectors() {
+        if (!state.deepValueData) return;
+        const sectors = new Set(state.deepValueData.map(d => d.category));
+        
+        const currentValue = elements.deepValueSector.value;
+        elements.deepValueSector.innerHTML = '<option value="all">All Sectors</option>';
+        
+        Array.from(sectors).sort().forEach(sector => {
+            const option = document.createElement('option');
+            option.value = sector;
+            option.textContent = sector;
+            if (sector === currentValue) option.selected = true;
+            elements.deepValueSector.appendChild(option);
+        });
+    }
+
+    // ============================================
+    // Main Render Function
+    // ============================================
+    function renderDashboard(data) {
+        console.log("Rendering dashboard with data:", data); // Debug log
+        const dbg = document.getElementById('debug-log');
+        if (dbg) {
+            dbg.innerHTML = "Dashboard Data Keys: " + Object.keys(data).join(", ");
+            if (data.portfolio) {
+                dbg.innerHTML += "<br>Portfolio Holdings: " + (data.portfolio.holdings?.length || 0);
+            }
+        }
+        
+        state.dashboardData = data;
+        
+        try { renderSummaryCards(data); } catch(e) { console.error('Error rendering summary cards:', e); if(dbg) dbg.innerHTML += "<br>Error: " + e; }
+        try { renderHoldingsTable(data); } catch(e) { console.error('Error rendering holdings table:', e); if(dbg) dbg.innerHTML += "<br>Error: " + e; }
+        try { renderDeepDiscounts(data); } catch(e) { console.error('Error rendering deep discounts:', e); if(dbg) dbg.innerHTML += "<br>Error: " + e; }
+        try { renderGTTStatus(data); } catch(e) { console.error('Error rendering GTT status:', e); if(dbg) dbg.innerHTML += "<br>Error: " + e; }
+        try { renderOpportunities(data); } catch(e) { console.error('Error rendering opportunities:', e); if(dbg) dbg.innerHTML += "<br>Error: " + e; }
+        try { renderCommodities(data); } catch(e) { console.error('Error rendering commodities:', e); if(dbg) dbg.innerHTML += "<br>Error: " + e; }
+        
+        if (state.deepValueData) {
+            try { populateDeepValueSectors(); } catch(e) { console.error('Error populating deep value sectors:', e); }
+            try { renderDeepValueScreener(); } catch(e) { console.error('Error rendering deep value:', e); }
+        }
+
+        // Update last updated time
+        try { elements.lastUpdated.querySelector('time').textContent = formatTime(new Date()); } catch(e) { console.error('Error updating time:', e); }
+    }
+
+    async function fetchDeepValueData() {
+        return await fetchAPI('/deep-value');
+    }
+
+    // ============================================
+    // Data Loading
+    // ============================================
+    async function loadDashboard(date) {
+        if (state.isRefreshing) return;
+        
+        state.isRefreshing = true;
+        
+        try {
+            const [dashboardData, marketStatus, availableDates, deepValueData] = await Promise.all([
+                fetchDashboardData(date),
+                fetchMarketStatus(),
+                fetchAvailableDates(),
+                fetchDeepValueData()
+            ]);
+            
+            state.availableDates = availableDates;
+            state.deepValueData = deepValueData;
+            
+            // Update date picker options
+            updateDatePicker(availableDates);
+            
+            // Update market status
+            updateMarketStatus(marketStatus);
+            
+            // Render dashboard
+            if (dashboardData) {
+                renderDashboard(dashboardData);
+            } else {
+                showError('No data available for selected date');
+            }
+            
+        } catch (error) {
+            console.error('Failed to load dashboard:', error);
+            showError('Failed to load portfolio data');
+        } finally {
+            state.isRefreshing = false;
+            hideLoading();
+        }
+    }
+
+    function updateDatePicker(dates) {
+        const currentValue = elements.reportDate.value;
+        
+        // Clear existing options except current
+        elements.reportDate.innerHTML = '';
+        
+        dates.forEach(date => {
+            const option = document.createElement('option');
+            option.value = date;
+            option.textContent = date;
+            if (date === currentValue) option.selected = true;
+            elements.reportDate.appendChild(option);
+        });
+        
+        // Set current date if not in list
+        if (!dates.includes(currentValue) && dates.length > 0) {
+            elements.reportDate.value = dates[0];
+            state.currentDate = dates[0];
+        }
+    }
+
+    // ============================================
+    // UI State Functions
+    // ============================================
+    function showLoading() {
+        elements.loadingOverlay.classList.add('active');
+    }
+
+    function hideLoading() {
+        elements.loadingOverlay.classList.remove('active');
+    }
+
+    function showError(message) {
+        console.error(message);
+        // Could add a toast notification here
+    }
+
+    // ============================================
+    // Tab Navigation
+    // ============================================
+    function switchTab(tabName) {
+        state.activeTab = tabName;
+        
+        // Update tab buttons
+        elements.tabs.forEach(tab => {
+            const isActive = tab.dataset.tab === tabName;
+            tab.classList.toggle('active', isActive);
+            tab.setAttribute('aria-selected', isActive);
+        });
+        
+        // Update tab panels
+        elements.tabPanels.forEach(panel => {
+            const isActive = panel.id === `panel-${tabName}`;
+            panel.classList.toggle('active', isActive);
+            panel.hidden = !isActive;
+        });
+    }
+
+    // ============================================
+    // Event Listeners
+    // ============================================
+    function attachEventListeners() {
+        // Date picker change
+        elements.reportDate.addEventListener('change', (e) => {
+            state.currentDate = e.target.value;
+            showLoading();
+            loadDashboard(state.currentDate);
+        });
+        
+        // Refresh button
+        elements.refreshBtn.addEventListener('click', () => {
+            showLoading();
+            loadDashboard(state.currentDate);
+        });
+        
+        // Tab navigation
+        elements.tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                switchTab(tab.dataset.tab);
+            });
+        });
+        
+        // Holdings search
+        elements.holdingsSearch.addEventListener('input', () => {
+            if (state.dashboardData) {
+                renderHoldingsTable(state.dashboardData);
+            }
+        });
+        
+        // Holdings sort
+        elements.holdingsSort.addEventListener('change', () => {
+            if (state.dashboardData) {
+                renderHoldingsTable(state.dashboardData);
+            }
+        });
+        
+        // Horizon filters
+        elements.horizonFilters.forEach(btn => {
+            btn.addEventListener('click', () => {
+                state.activeHorizon = btn.dataset.horizon;
+                
+                elements.horizonFilters.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                
+                if (state.dashboardData) {
+                    renderOpportunities(state.dashboardData);
+                }
+            });
+        });
+        
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            // Ctrl+R or F5 to refresh
+            if ((e.ctrlKey || e.key === 'F5') && !e.shiftKey) {
+                e.preventDefault();
+                showLoading();
+                loadDashboard(state.currentDate);
+            }
+        });
+
+        // Mask toggle
+        if (elements.maskToggleBtn) {
+            elements.maskToggleBtn.addEventListener('click', () => {
+                state.isMasked = !state.isMasked;
+                elements.maskIcon.textContent = state.isMasked ? '👁️‍🗨️' : '👁️';
+                if (state.dashboardData) {
+                    renderSummaryCards(state.dashboardData);
+                    renderHoldingsTable(state.dashboardData);
+                }
+            });
+        }
+
+        // Deep Value
+        if (elements.deepValueSearch) {
+            elements.deepValueSearch.addEventListener('input', () => {
+                renderDeepValueScreener();
+            });
+        }
+        if (elements.deepValueSector) {
+            elements.deepValueSector.addEventListener('change', () => {
+                renderDeepValueScreener();
+            });
+        }
+    }
+
+    // ============================================
+    // Initialization
+    // ============================================
+    async function init() {
+        showLoading();
+        attachEventListeners();
+        
+        // Fetch available dates first
+        const availableDates = await fetchAvailableDates();
+        state.availableDates = availableDates;
+        
+        console.log("Available dates:", availableDates); // Debug log
+        
+        if (availableDates.length > 0) {
+            state.currentDate = availableDates[0];
+            elements.reportDate.value = availableDates[0]; // Set UI value
+        }
+        
+        console.log("Loading dashboard for date:", state.currentDate); // Debug log
+        
+        // Load initial data
+        await loadDashboard(state.currentDate);
+        
+        // Start auto-refresh
+        startAutoRefresh();
+        
+        console.log('KiteMCP Dashboard initialized');
+    }
+
+    // Start the application
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+
+})();

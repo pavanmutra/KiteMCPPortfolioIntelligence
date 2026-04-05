@@ -99,11 +99,13 @@ if (allRequiredReady()) {
   console.log(`${G}✅ Required JSON files already present for ${TODAY}. Generating reports...${X}`);
   const ok1 = runScript('create_master_markdown.js');
   const ok2 = runScript('create_portfolio_export.js');
+  const ok3 = runScript('convert_deep_value.js');
+  const ok4 = runScript('fetch_commodities.js');
 
-  if (ok1 && ok2) {
+  if (ok1 && ok2 && ok3 && ok4) {
     console.log(`\n${G}${BOLD}✅ Daily workflow complete. Run 'npm run check' before trading.${X}\n`);
   }
-  process.exit(ok1 && ok2 ? 0 : 1);
+  process.exit(ok1 && ok2 && ok3 && ok4 ? 0 : 1);
 }
 
 // ─── Mode: Poll for AI-generated JSON files ──────────────────────────────
@@ -148,15 +150,17 @@ const interval = setInterval(() => {
     
     const ok1 = runScript('create_master_markdown.js');
     const ok2 = runScript('create_portfolio_export.js');
+    const ok3 = runScript('convert_deep_value.js');
+    const ok4 = runScript('fetch_commodities.js');
 
-    if (ok1 && ok2) {
+    if (ok1 && ok2 && ok3 && ok4) {
       console.log(`\n${G}${BOLD}✅ Daily workflow complete!${X}`);
       console.log(`${G}   Reports saved to reports/${TODAY}/${X}`);
       console.log(`${G}   Shortcuts updated in reports/Latest_Report.md and reports/Latest_Portfolio.xlsx${X}`);
       console.log(`\n${Y}► Run 'npm run check' before placing any order.${X}\n`);
     }
     
-    process.exit(ok1 && ok2 ? 0 : 1);
+    process.exit(ok1 && ok2 && ok3 && ok4 ? 0 : 1);
   }
 }, POLL_MS);
 

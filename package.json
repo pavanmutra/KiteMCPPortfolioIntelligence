@@ -8,6 +8,8 @@
     "report": "node src/create_master_markdown.js",
     "export": "node src/create_portfolio_export.js",
     "scan": "node src/scan_opportunities.js",
+    "deepvalue": "node src/convert_deep_value.js",
+    "commodities": "node src/fetch_commodities.js",
     "login": "node src/kite_login.js",
     "login:status": "node src/kite_login.js status",
     "login:open": "node src/kite_login.js open",
@@ -15,9 +17,11 @@
     "check": "node src/check_gates.js",
     "status": "node src/check_gates.js",
     "dashboard": "node src/dashboard.js",
-    "help": "node -e \"console.log('\\nAvailable Commands:\\n npm start\\t\\tRun full daily workflow\\n npm run check\\tCheck gate status\\n npm run dashboard\\tQuick CLI portfolio summary\\n npm run report\\tGenerate daily Markdown report\\n npm run export\\tGenerate portfolio Excel\\n')\""
+    "web": "node src/server.js",
+    "help": "node -e \"console.log('\\nAvailable Commands:\\n npm start\\t\\tRun full daily workflow\\n npm run check\\tCheck gate status\\n npm run dashboard\\tQuick CLI portfolio summary\\n npm run report\\tGenerate daily Markdown report\\n npm run export\\tGenerate portfolio Excel\\n npm run web\\t\\tStart web dashboard\\n')\""
   },
   "dependencies": {
-    "exceljs": "^4.4.0"
+    "exceljs": "^4.4.0",
+    "express": "^4.18.2"
   }
 }

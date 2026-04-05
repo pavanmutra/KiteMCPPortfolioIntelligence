@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="KiteMCP Portfolio Intelligence Dashboard - Real-time equity portfolio tracking">
+    <title>KiteMCP Portfolio Dashboard</title>
+    
+    <!-- Preconnect for performance -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    
+    <!-- Fonts: Inter for UI, JetBrains Mono for numbers -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-left">
+                <h1 class="logo">
+                    <span class="logo-icon">📊</span>
+                    <span class="logo-text">KiteMCP</span>
+                </h1>
+                <span class="tagline">Portfolio Intelligence</span>
+            </div>
+            
+            <div class="header-center">
+                <div class="market-status" id="marketStatus">
+                    <span class="status-dot"></span>
+                    <span class="status-text">Loading...</span>
+                </div>
+            </div>
+            
+            <div class="header-right">
+                <button class="btn btn-icon" id="maskToggleBtn" title="Toggle visibility">
+                    <span id="maskIcon">👁️</span>
+                </button>
+                <div class="date-picker">
+                    <label for="reportDate" class="sr-only">Select Report Date</label>
+                    <select id="reportDate" class="date-input"></select>
+                </div>
+                <button class="btn btn-icon" id="refreshBtn" title="Refresh Data">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+                    </svg>
+                </button>
+                <div class="last-updated" id="lastUpdated">
+                    <span class="sr-only">Last updated:</span>
+                    <time>--:--</time>
+                </div>
+            </div>
+        </header>
+        
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Portfolio Summary Cards -->
+            <section class="summary-section" aria-label="Portfolio Summary">
+                <div class="summary-cards">
+                    <article class="summary-card card-total-value">
+                        <span class="card-label">Total Value</span>
+                        <span class="card-value" id="totalValue">₹--</span>
+                        <span class="card-subtitle">Market Value</span>
+                    </article>
+                    
+                    <article class="summary-card card-pnl">
+                        <span class="card-label">Total P&L</span>
+                        <span class="card-value" id="totalPnl">₹--</span>
+                        <span class="card-subtitle" id="totalPnlPct">--%</span>
+                    </article>
+                    
+                    <article class="summary-card card-margin">
+                        <span class="card-label">Available Margin</span>
+                        <span class="card-value" id="availableMargin">₹--</span>
+                        <span class="card-subtitle">Cash Available</span>
+                    </article>
+                    
+                    <article class="summary-card card-holdings">
+                        <span class="card-label">Holdings</span>
+                        <span class="card-value" id="holdingsCount">--</span>
+                        <span class="card-subtitle">Positions</span>
+                    </article>
+                </div>
+            </section>
+            
+            <!-- Tab Navigation -->
+            <nav class="tabs" role="tablist" aria-label="Dashboard sections">
+                <button class="tab active" role="tab" aria-selected="true" data-tab="holdings" id="tab-holdings">
+                    <span class="tab-icon">📈</span>
+                    <span class="tab-label">Holdings</span>
+                </button>
+                <button class="tab" role="tab" aria-selected="false" data-tab="alerts" id="tab-alerts">
+                    <span class="tab-icon">🎯</span>
+                    <span class="tab-label">Deep Discounts</span>
+                </button>
+                <button class="tab" role="tab" aria-selected="false" data-tab="gtt" id="tab-gtt">
+                    <span class="tab-icon">🛡️</span>
+                    <span class="tab-label">GTT Status</span>
+                </button>
+                <button class="tab" role="tab" aria-selected="false" data-tab="opportunities" id="tab-opportunities">
+                    <span class="tab-icon">💡</span>
+                    <span class="tab-label">Opportunities</span>
+                </button>
+                <button class="tab" role="tab" aria-selected="false" data-tab="commodities" id="tab-commodities">
+                    <span class="tab-icon">🛢️</span>
+                    <span class="tab-label">Commodities</span>
+                </button>
+                <button class="tab" role="tab" aria-selected="false" data-tab="deepvalue" id="tab-deepvalue">
+                    <span class="tab-icon">💎</span>
+                    <span class="tab-label">Deep Value</span>
+                </button>
+            </nav>
+            
+            <!-- Tab Panels -->
+            <div class="tab-panels">
+                <!-- Holdings Tab -->
+                <section class="tab-panel active" role="tabpanel" id="panel-holdings" aria-labelledby="tab-holdings">
+                    <div class="panel-header">
+                        <h2>Portfolio Holdings</h2>
+                        <div class="table-controls">
+                            <input type="text" id="holdingsSearch" class="search-input" placeholder="Search holdings..." aria-label="Search holdings">
+                            <select id="holdingsSort" class="sort-select" aria-label="Sort holdings">
+                                <option value="value">Sort by Value</option>
+                                <option value="pnl">Sort by P&L</option>
+                                <option value="symbol">Sort by Symbol</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="table-container">
+                        <table class="data-table" id="holdingsTable">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Symbol</th>
+                                    <th scope="col">Company</th>
+                                    <th scope="col" class="text-right">Qty</th>
+                                    <th scope="col" class="text-right">Avg Price</th>
+                                    <th scope="col" class="text-right">CMP</th>
+                                    <th scope="col" class="text-right">Current Value</th>
+                                    <th scope="col" class="text-right">P&L</th>
+                                    <th scope="col" class="text-right">P&L %</th>
+                                    <th scope="col">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="holdingsBody">
+                                <tr><td colspan="9" class="loading">Loading holdings...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+                
+                <!-- Deep Discounts Tab -->
+                <section class="tab-panel" role="tabpanel" id="panel-alerts" aria-labelledby="tab-alerts" hidden>
+                    <div class="panel-header">
+                        <h2>Deep Discount Alerts <span class="badge" id="discountCount">0</span></h2>
+                    </div>
+                    <div class="alerts-grid" id="discountsGrid">
+                        <p class="empty-state">No deep discount stocks found.</p>
+                    </div>
+                </section>
+                
+                <!-- GTT Status Tab -->
+                <section class="tab-panel" role="tabpanel" id="panel-gtt" aria-labelledby="tab-gtt" hidden>
+                    <div class="panel-header">
+                        <h2>GTT Protection Status</h2>
+                    </div>
+                    <div class="gtt-summary">
+                        <div class="gtt-stat protected">
+                            <span class="gtt-stat-value" id="protectedCount">0</span>
+                            <span class="gtt-stat-label">Protected</span>
+                        </div>
+                        <div class="gtt-stat unprotected">
+                            <span class="gtt-stat-value" id="unprotectedCount">0</span>
+                            <span class="gtt-stat-label">Unprotected</span>
+                        </div>
+                    </div>
+                    <div class="gtt-list" id="gttList">
+                        <p class="empty-state">No GTT data available.</p>
+                    </div>
+                </section>
+                
+                <!-- Opportunities Tab -->
+                <section class="tab-panel" role="tabpanel" id="panel-opportunities" aria-labelledby="tab-opportunities" hidden>
+                    <div class="panel-header">
+                        <h2>Investment Opportunities</h2>
+                        <div class="horizon-filters">
+                            <button class="filter-btn active" data-horizon="all">All</button>
+                            <button class="filter-btn" data-horizon="short">Short</button>
+                            <button class="filter-btn" data-horizon="medium">Medium</button>
+                            <button class="filter-btn" data-horizon="long">Long</button>
+                        </div>
+                    </div>
+                    <div class="opportunities-grid" id="opportunitiesGrid">
+                        <p class="empty-state">No opportunities found.</p>
+                    </div>
+                </section>
+                
+                <!-- Deep Value Screener Tab -->
+                <section class="tab-panel" role="tabpanel" id="panel-deepvalue" aria-labelledby="tab-deepvalue" hidden>
+                    <div class="panel-header">
+                        <h2>Deep Value Screener</h2>
+                        <div class="table-controls">
+                            <input type="text" id="deepValueSearch" class="search-input" placeholder="Search companies..." aria-label="Search deep value stocks">
+                            <select id="deepValueSector" class="sort-select" aria-label="Filter by Sector">
+                                <option value="all">All Sectors</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="table-container">
+                        <table class="data-table" id="deepValueTable">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Company</th>
+                                    <th scope="col">Ticker</th>
+                                    <th scope="col">Sector</th>
+                                    <th scope="col" class="text-right">P/E</th>
+                                    <th scope="col" class="text-right">P/B</th>
+                                    <th scope="col" class="text-right">ROE %</th>
+                                    <th scope="col" class="text-right">D/E</th>
+                                    <th scope="col" class="text-right">Score</th>
+                                    <th scope="col">Risk</th>
+                                </tr>
+                            </thead>
+                            <tbody id="deepValueBody">
+                                <tr><td colspan="9" class="loading">Loading deep value data...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- Commodities Tab -->
+                <section class="tab-panel" role="tabpanel" id="panel-commodities" aria-labelledby="tab-commodities" hidden>
+                    <div class="panel-header">
+                        <h2>MCX Commodity Prices</h2>
+                    </div>
+                    <div class="commodities-grid" id="commoditiesGrid">
+                        <p class="empty-state">No commodity data available.</p>
+                    </div>
+                </section>
+            </div>
+        </main>
+        
+        <!-- Footer -->
+        <footer class="footer">
+            <p>Data sources: <span class="source">Zerodha Kite</span> | <span class="source">Screener.in</span> | <span class="source">Web Search</span></p>
+            <p class="disclaimer">For informational purposes only. Not investment advice.</p>
+            <div id="debug-log" style="text-align:left; background:#333; color:lime; padding:1rem; font-family:monospace; max-height:200px; overflow:auto; margin-top:20px; font-size:12px;"></div>
+        </footer>
+    </div>
+    
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner"></div>
+        <p>Loading portfolio data...</p>
+    </div>
+    
+    <!-- Scripts -->
+    <script src="/js/app.js?v=3"></script>
+</body>
+</html>

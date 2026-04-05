@@ -63,6 +63,7 @@ or GTT modification is allowed before all gates pass.
 [ ] GATE 2 — Portfolio Morning Scan     → Fetch all holdings via KiteMCP
 [ ] GATE 3 — Intrinsic Value Screen     → Flag deeply discounted stocks
 [ ] GATE 3.5 — GTT Placement Execution → Place approved GTT orders (buy accumulation, stop-loss, targets)
+[ ] GATE 3.7 — Deep Value Screener Converter → Convert static deep value markdown to JSON
 [ ] GATE 4 — Daily Report Generated    → Save to reports/YYYY-MM-DD/YYYY-MM-DD_daily_report.md
                                           before any buy/sell/GTT action
 [ ] GATE 5 — Excel Export              → Generate Portfolio_YYYY-MM-DD.xlsx with tax & dividend
@@ -893,6 +894,7 @@ GROUP 1: EXTERNAL DATA (08:30-08:50)
 GROUP 2: ANALYSIS (09:00-09:10)
 09:00        intrinsic-value      Run value screen on all holdings
 09:05        gtt-manager          Audit all GTTs, flag unprotected stocks
+09:08        deep-value-screener  Convert deep value markdown to JSON
 
 GROUP 3: OUTPUT & EXECUTION (09:10-09:30)
 09:10        report-generator     Compile and save daily report
