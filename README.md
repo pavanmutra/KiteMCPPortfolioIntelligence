@@ -47,7 +47,7 @@ Whether you're a retail investor or managing a portfolio of ₹1Cr+, this system
 
 ```bash
 # Clone the repository
-git clone https://github.com/Mutraa/KiteMCP.git
+git clone https://github.com/pavanmutra/KiteMCPPortfolioIntelligence.git
 cd KiteMCP
 
 # Install dependencies
@@ -110,13 +110,36 @@ npm run web
 
 Then open **http://localhost:3000** in your browser.
 
-Features:
-- 📅 Date picker for historical data
-- 👁️ Privacy mask toggle (hide P&L values)
-- 📊 Holdings table with MoS
-- 💎 Deep Value tab with sector filters
-- 📈 Commodities grid
-- 📰 Opportunities by horizon
+### Features
+
+| Section | Description |
+|---------|-------------|
+| 📅 **Date Picker** | Navigate to any historical date |
+| 👁️ **Privacy Mask** | Hide P&L values with one click |
+| 💼 **Holdings** | Full portfolio with P&L, MoS, recommendations |
+| 💎 **Deep Value** | 80+ stocks with sector filters & search |
+| 📊 **Discounts** | Deep discount alerts (>40% MoS) |
+| 📈 **GTT Status** | Protected/unprotected holdings + recommendations |
+| 📰 **Opportunities** | Short/Medium/Long term picks |
+| 🪙 **Commodities** | Live MCX prices (Gold, Silver, Crude, Natural Gas) |
+
+### Screenshots
+
+> 💡 Pro tip: Use the **eye icon** (👁️) in the top-right corner to mask sensitive P&L data before taking screenshots!
+
+| Dashboard Overview |
+|--------------------|
+| ![Dashboard](docs/screenshots/dashboard.png) |
+
+| Deep Value Screener |
+|---------------------|
+| ![Deep Value](docs/screenshots/deep-value.png) |
+
+| Investment Oppurtunities |
+|--------------------|
+| ![Holdings](docs/screenshots/holdings.png) |
+
+*Add your own screenshots to `docs/screenshots/` folder*
 
 ---
 
@@ -177,7 +200,7 @@ This project is licensed under the **MIT License** - see [LICENSE](LICENSE) for 
 ## 📧 Contact
 
 - **Author**: Mutra PavanKumarReddy
-- **GitHub**: [github.com/Mutraa/KiteMCP](https://github.com/Mutraa/KiteMCP)
+- **GitHub**: [github.com/pavanmutra/KiteMCPPortfolioIntelligence](https://github.com/pavanmutra/KiteMCPPortfolioIntelligence)
 
 ---
 
