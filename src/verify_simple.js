@@ -49,7 +49,7 @@ const jsonFiles = expectedFiles.filter(f => f.endsWith('.json'));
 let jsonParseErrors = 0;
 for (const file of jsonFiles) {
   const filePath = path.join(REPORTS_DIR, file);
-  if (!fs.existsSync(filePath)) continue;
+  if (!fs.existsSync(filePath)) {continue;}
   
   try {
     const content = fs.readFileSync(filePath, 'utf8');
@@ -78,7 +78,7 @@ try {
       console.log(`✅ Portfolio values match: ₹${portfolioValueSnapshot?.toLocaleString('en-IN')}`);
       score += 2;
     } else {
-      console.log(`⚠️  Portfolio value MISMATCH:`);
+      console.log('⚠️  Portfolio value MISMATCH:');
       console.log(`   - portfolio_snapshot.json: ₹${portfolioValueSnapshot?.toLocaleString('en-IN')}`);
       console.log(`   - gtt_placement.json: ₹${portfolioValueGTT?.toLocaleString('en-IN')}`);
       issues.push(`PORTFOLIO_VALUE_MISMATCH: ${portfolioValueSnapshot} vs ${portfolioValueGTT}`);

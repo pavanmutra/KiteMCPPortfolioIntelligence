@@ -3,17 +3,17 @@
  */
 class Formatters {
     static formatCurrency(value) {
-        if (value == null || isNaN(value)) return "₹0.00";
+        if (value == null || isNaN(value)) {return '₹0.00';}
         
         const absValue = Math.abs(value);
-        if (absValue >= 10000000) return `₹${(value / 10000000).toFixed(2)}Cr`;
-        if (absValue >= 100000) return `₹${(value / 100000).toFixed(2)}L`;
+        if (absValue >= 10000000) {return `₹${(value / 10000000).toFixed(2)}Cr`;}
+        if (absValue >= 100000) {return `₹${(value / 100000).toFixed(2)}L`;}
         
         return `₹${value.toLocaleString('en-IN', { maximumFractionDigits: 2, minimumFractionDigits: 2 })}`;
     }
 
     static formatPercent(value) {
-        if (value == null || isNaN(value)) return "0.00%";
+        if (value == null || isNaN(value)) {return '0.00%';}
         const sign = value >= 0 ? '+' : '';
         return `${sign}${value.toFixed(2)}%`;
     }

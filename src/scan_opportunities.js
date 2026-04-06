@@ -24,23 +24,23 @@ function fetchUrl(url) {
 
 // Mock search results (in production, use actual API)
 const mockOpportunities = [
-    { symbol: "POLYCAB", horizon: "MEDIUM-TERM", target_3m: 5800, upside_3m: 18, catalyst: "Cable demand, margin expansion", recommendation: "BUY ON DIPS" },
-    { symbol: "GRASIM", horizon: "LONG-TERM", target_3m: 2100, upside_3m: 15, catalyst: "VSF recovery, cement growth", recommendation: "ACCUMULATE" },
-    { symbol: "KALPATARU", horizon: "MEDIUM-TERM", target_3m: 950, upside_3m: 22, catalyst: "Order book growth, EBITDA improvement", recommendation: "BUY" },
-    { symbol: "AUROBINDO", horizon: "LONG-TERM", target_3m: 1250, upside_3m: 25, catalyst: "USFDA approvals, export growth", recommendation: "ACCUMULATE" },
-    { symbol: "TILAKNAGAR", horizon: "MEDIUM-TERM", target_3m: 280, upside_3m: 30, catalyst: "Brand expansion, profit growth", recommendation: "BUY" }
+    { symbol: 'POLYCAB', horizon: 'MEDIUM-TERM', target_3m: 5800, upside_3m: 18, catalyst: 'Cable demand, margin expansion', recommendation: 'BUY ON DIPS' },
+    { symbol: 'GRASIM', horizon: 'LONG-TERM', target_3m: 2100, upside_3m: 15, catalyst: 'VSF recovery, cement growth', recommendation: 'ACCUMULATE' },
+    { symbol: 'KALPATARU', horizon: 'MEDIUM-TERM', target_3m: 950, upside_3m: 22, catalyst: 'Order book growth, EBITDA improvement', recommendation: 'BUY' },
+    { symbol: 'AUROBINDO', horizon: 'LONG-TERM', target_3m: 1250, upside_3m: 25, catalyst: 'USFDA approvals, export growth', recommendation: 'ACCUMULATE' },
+    { symbol: 'TILAKNAGAR', horizon: 'MEDIUM-TERM', target_3m: 280, upside_3m: 30, catalyst: 'Brand expansion, profit growth', recommendation: 'BUY' }
 ];
 
 const mockCommodities = [
-    { symbol: "GOLD", price: 145000, change_percent: 0.52, trend: "BULLISH", recommendation: "HOLD" },
-    { symbol: "SILVER", price: 89500, change_percent: -0.32, trend: "NEUTRAL", recommendation: "WATCH" },
-    { symbol: "CRUDE", price: 5200, change_percent: 1.25, trend: "BULLISH", recommendation: "BUY ON DIP" },
-    { symbol: "NATURALGAS", price: 180, change_percent: -2.15, trend: "BEARISH", recommendation: "SELL" }
+    { symbol: 'GOLD', price: 145000, change_percent: 0.52, trend: 'BULLISH', recommendation: 'HOLD' },
+    { symbol: 'SILVER', price: 89500, change_percent: -0.32, trend: 'NEUTRAL', recommendation: 'WATCH' },
+    { symbol: 'CRUDE', price: 5200, change_percent: 1.25, trend: 'BULLISH', recommendation: 'BUY ON DIP' },
+    { symbol: 'NATURALGAS', price: 180, change_percent: -2.15, trend: 'BEARISH', recommendation: 'SELL' }
 ];
 
 const mockNews = [
-    { source: "Economic Times", headline: "Nifty hits fresh high amid FII buying", impact: 7, type: "MARKET", action: "MONITOR", symbol: "NIFTY", sentiment: "BULLISH" },
-    { source: "MoneyControl", headline: "RBI keeps rates unchanged", impact: 6, type: "REGULATORY", action: "NEUTRAL", symbol: "MARKET", sentiment: "NEUTRAL" }
+    { source: 'Economic Times', headline: 'Nifty hits fresh high amid FII buying', impact: 7, type: 'MARKET', action: 'MONITOR', symbol: 'NIFTY', sentiment: 'BULLISH' },
+    { source: 'MoneyControl', headline: 'RBI keeps rates unchanged', impact: 6, type: 'REGULATORY', action: 'NEUTRAL', symbol: 'MARKET', sentiment: 'NEUTRAL' }
 ];
 
 // Save opportunities

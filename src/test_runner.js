@@ -36,8 +36,8 @@ function info(msg) { console.log(`${CYAN}ℹ️  ${RESET}${msg}`); }
 function section(name) { console.log(`\n${BOLD}${BLUE}━━ ${name} ${'━'.repeat(50 - name.length - 3)}${RESET}`); }
 
 // ─── Test Results ─────────────────────────────────────────────────────────────
-let results = { passed: 0, failed: 0, skipped: 0 };
-let allTests = [];
+const results = { passed: 0, failed: 0, skipped: 0 };
+const allTests = [];
 
 function test(name, fn) {
     return (async () => {
@@ -109,7 +109,7 @@ function fileExists(...parts) {
 
 function readJSON(...parts) {
     const filePath = path.join(...parts);
-    if (!fs.existsSync(filePath)) return null;
+    if (!fs.existsSync(filePath)) {return null;}
     try {
         return JSON.parse(fs.readFileSync(filePath, 'utf8'));
     } catch {
@@ -352,7 +352,7 @@ async function suiteReportFiles() {
         `${latestDate}_opportunities.json`,
         `${latestDate}_news_opportunities.json`,
         `${latestDate}_commodity_opportunities.json`,
-        `${latestDate}_gate_status.json`,
+        `${latestDate}_gate_status.json`
     ];
 
     for (const file of requiredFiles) {
@@ -419,7 +419,7 @@ async function suiteDashboardLogic() {
 
     await test('CSS has stale warning styles', async () => {
         const cssFile = path.join(cssDir, 'style.css');
-        if (!fs.existsSync(cssFile)) return 'SKIP';
+        if (!fs.existsSync(cssFile)) {return 'SKIP';}
         const content = fs.readFileSync(cssFile, 'utf8');
         return content.includes('stale');
     });
@@ -474,7 +474,7 @@ async function suiteSmoke() {
     await test('Gate status file confirms all required gates passed', async () => {
         const latestDate = getLatestReportDate();
         const gateFile = readJSON(REPORTS_DIR, latestDate, 'raw_data', `${latestDate}_gate_status.json`);
-        if (!gateFile) return false;
+        if (!gateFile) {return false;}
         const gates = gateFile.gates || gateFile;
         const required = ['GATE_1', 'GATE_2', 'GATE_3', 'GATE_4', 'GATE_4_5'];
         return required.every(g => gates[g]?.status === 'PASS');
@@ -507,11 +507,11 @@ async function main() {
         // Still run file-based tests
     }
 
-    if (runAPI)    await suiteAPI();
-    if (runData)   await suiteDataIntegrity();
-    if (runFiles)  await suiteReportFiles();
-    if (runLogic)  await suiteDashboardLogic();
-    if (runSmoke)  await suiteSmoke();
+    if (runAPI)    {await suiteAPI();}
+    if (runData)   {await suiteDataIntegrity();}
+    if (runFiles)  {await suiteReportFiles();}
+    if (runLogic)  {await suiteDashboardLogic();}
+    if (runSmoke)  {await suiteSmoke();}
 
     // ── Summary ──────────────────────────────────────────────────────────────
     console.log(`\n${BOLD}${BLUE}═══════════════════════════════════════════════════════════${RESET}`);
@@ -535,7 +535,7 @@ async function main() {
     // ── Save Results ────────────────────────────────────────────────────────
     const latestDate = getLatestReportDate() || TODAY;
     const resultsDir = path.join(REPORTS_DIR, latestDate);
-    if (!fs.existsSync(resultsDir)) fs.mkdirSync(resultsDir, { recursive: true });
+    if (!fs.existsSync(resultsDir)) {fs.mkdirSync(resultsDir, { recursive: true });}
 
     const outputFile = path.join(resultsDir, `${latestDate}_test_results.json`);
     fs.writeFileSync(outputFile, JSON.stringify({

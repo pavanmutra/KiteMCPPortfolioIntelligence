@@ -306,7 +306,7 @@ class VerificationGate {
       console.log(`✅ Portfolio value consistent: ₹${portfolioValue}`);
     } else {
       points += 1;
-      console.log(`⚠️  Portfolio value discrepancies found (warning logged)`);
+      console.log('⚠️  Portfolio value discrepancies found (warning logged)');
     }
 
     // Check 2: GTT Kite IDs match
@@ -327,11 +327,11 @@ class VerificationGate {
     
     if (JSON.stringify(portSymbols) === JSON.stringify(valueScreenSymbols)) {
       points += 2;
-      console.log(`✅ Stock symbols consistent across reports (7 symbols)`);
+      console.log('✅ Stock symbols consistent across reports (7 symbols)');
     } else {
       this.results.warnings.push('SYMBOL_MISMATCH');
       points += 1;
-      console.log(`⚠️  Symbol mismatch between portfolio and value screen`);
+      console.log('⚠️  Symbol mismatch between portfolio and value screen');
     }
 
     // Check 4: Market data consistency
@@ -341,7 +341,7 @@ class VerificationGate {
     
     if (sensex && nifty && fii) {
       points += 2;
-      console.log(`✅ Market data consistent across reports`);
+      console.log('✅ Market data consistent across reports');
       console.log(`   Sensex: ${sensex}, Nifty: ${nifty}, FII: ${fii}`);
     } else {
       points += 1;
@@ -480,9 +480,9 @@ class VerificationGate {
 
 // Helper functions
 function getDepth(obj) {
-  if (obj === null || typeof obj !== 'object') return 0;
-  if (Array.isArray(obj) && obj.length === 0) return 1;
-  if (Object.keys(obj).length === 0) return 1;
+  if (obj === null || typeof obj !== 'object') {return 0;}
+  if (Array.isArray(obj) && obj.length === 0) {return 1;}
+  if (Object.keys(obj).length === 0) {return 1;}
   return 1 + Math.max(...Object.values(obj).map(getDepth));
 }
 

@@ -48,14 +48,14 @@ function getExportAction(symbol, pnl_percent) {
     const r = config.risk;
     const iv = ivMap[symbol];
     if (iv) {
-        if (iv.margin_of_safety > r.deepDiscountMos)  return 'STRONG ACCUMULATE';
-        if (iv.margin_of_safety > r.moderateDiscountMos)  return 'ACCUMULATE ON DIPS';
-        if (iv.margin_of_safety < r.overvaluedMos) return 'TRIM / EXIT';
+        if (iv.margin_of_safety > r.deepDiscountMos)  {return 'STRONG ACCUMULATE';}
+        if (iv.margin_of_safety > r.moderateDiscountMos)  {return 'ACCUMULATE ON DIPS';}
+        if (iv.margin_of_safety < r.overvaluedMos) {return 'TRIM / EXIT';}
         return 'HOLD';
     }
     // Fallback: use P&L with tax-loss harvest flag
-    if (pnl_percent < r.largeLossThreshold) return 'TAX LOSS HARVEST';
-    if (pnl_percent < r.taxLossHarvestThreshold) return 'REVIEW';
+    if (pnl_percent < r.largeLossThreshold) {return 'TAX LOSS HARVEST';}
+    if (pnl_percent < r.taxLossHarvestThreshold) {return 'REVIEW';}
     return 'HOLD';
 }
 
@@ -101,7 +101,7 @@ const holdings = normalizedRawHoldings.map((h, i) => {
         tax_category:  getTaxCategory(originalH),
         holding_period_days: originalH.holding_period_days || 0,
         margin_of_safety: ivMap[h.symbol]?.margin_of_safety ?? null,
-        intrinsic_value:  ivMap[h.symbol]?.graham_number ?? null,
+        intrinsic_value:  ivMap[h.symbol]?.graham_number ?? null
     };
 });
 
@@ -409,7 +409,7 @@ saveExcel()
         try {
             const latestPath = path.join(__dirname, '../reports', 'Latest_Portfolio.xlsx');
             fs.copyFileSync(savedPath, latestPath);
-            console.log(`✅ Shortcut updated: reports/Latest_Portfolio.xlsx`);
+            console.log('✅ Shortcut updated: reports/Latest_Portfolio.xlsx');
         } catch (copyErr) {
             console.error(`⚠️ Failed to update Latest_Portfolio.xlsx: ${copyErr.message}`);
         }
@@ -425,6 +425,6 @@ saveExcel()
     console.log(`Tax Loss Candidates: ${taxLossCandidates.length}`);
     console.log(`Expected Annual Dividend: ₹${Math.round(totalDividend).toLocaleString('en-IN')}`);
 }).catch(err => {
-    console.error("\n❌ Failed to save Excel file:");
+    console.error('\n❌ Failed to save Excel file:');
     console.error(err);
 });

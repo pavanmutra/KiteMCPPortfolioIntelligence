@@ -58,13 +58,13 @@ console.log(`${Y}└────────────────────
 const REQUIRED_JSON = [
   `${TODAY}_portfolio_snapshot.json`,
   `${TODAY}_value_screen.json`,
-  `${TODAY}_gtt_audit.json`,
+  `${TODAY}_gtt_audit.json`
 ];
 
 const OPTIONAL_JSON = [
   `${TODAY}_opportunities.json`,
   `${TODAY}_news_opportunities.json`,
-  `${TODAY}_commodity_opportunities.json`,
+  `${TODAY}_commodity_opportunities.json`
 ];
 
 // Track what's been seen

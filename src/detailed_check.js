@@ -20,7 +20,7 @@ const discrepancy = Math.abs((snapshot.summary?.total_market_value || 0) - (gttP
 if (discrepancy > 100) {
   console.log(`   ⚠️  DISCREPANCY: ₹${discrepancy.toLocaleString('en-IN')} (${((discrepancy/(snapshot.summary?.total_market_value || 1))*100).toFixed(2)}%)`);
 } else {
-  console.log(`   ✅ Values match (diff < ₹100)`);
+  console.log('   ✅ Values match (diff < ₹100)');
 }
 
 console.log('\n2️⃣  HOLDINGS COUNT:');
@@ -33,9 +33,9 @@ const valueScreenSymbols = (valueScreen.stocks || []).map(s => s.symbol).sort();
 console.log(`   Snapshot symbols: ${snapshotSymbols.join(', ')}`);
 console.log(`   Value Screen symbols: ${valueScreenSymbols.join(', ')}`);
 if (JSON.stringify(snapshotSymbols) === JSON.stringify(valueScreenSymbols)) {
-  console.log(`   ✅ Symbol lists match`);
+  console.log('   ✅ Symbol lists match');
 } else {
-  console.log(`   ⚠️  Symbol lists differ`);
+  console.log('   ⚠️  Symbol lists differ');
 }
 
 console.log('\n3️⃣  BUYBACK OPPORTUNITIES COUNT:');
@@ -55,7 +55,7 @@ console.log(`   GTT Skipped: ${gttPlacement.skipped_gtts?.length || 0}`);
 
 // Check for "BUY_GTT_ONLY" vs "UNPROTECTED" issue
 if (gttAudit.unprotected_holdings) {
-  console.log(`\n   Unprotected holdings details:`);
+  console.log('\n   Unprotected holdings details:');
   gttAudit.unprotected_holdings.forEach(h => {
     console.log(`   - ${h.symbol}: ${h.reason || 'no reason stated'}`);
   });
@@ -67,9 +67,9 @@ console.log(`   GTT Kite IDs in gtt_placement: [${gttIds.join(', ')}]`);
 const placementIds = (gttPlacement.placements || []).map(p => p.kite_gtt_id).sort();
 console.log(`   Extracted from placements: [${placementIds.join(', ')}]`);
 if (JSON.stringify(gttIds.sort()) === JSON.stringify(placementIds)) {
-  console.log(`   ✅ IDs match`);
+  console.log('   ✅ IDs match');
 } else {
-  console.log(`   ⚠️  IDs differ`);
+  console.log('   ⚠️  IDs differ');
 }
 
 console.log('\n6️⃣  MARKET DATA CONSISTENCY:');

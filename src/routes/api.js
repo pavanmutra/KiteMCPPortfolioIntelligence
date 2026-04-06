@@ -22,7 +22,7 @@ function getAvailableDates() {
             .sort()
             .reverse(); // Most recent first
     } catch (e) {
-        console.error("Error reading dates directory:", e);
+        console.error('Error reading dates directory:', e);
         return [];
     }
 }
@@ -37,7 +37,7 @@ function readReportJSON(date, filename) {
         path.join(REPORTS_DIR, date, 'raw_data', filename),      // reports/2026-04-06/raw_data/2026-04-06_portfolio_snapshot.json
         path.join(REPORTS_DIR, date, filename),                 // reports/2026-04-06/2026-04-06_portfolio_snapshot.json
         path.join(REPORTS_DIR, `${date}_${filename}`),         // reports/2026-04-06_2026-04-06_portfolio_snapshot.json (legacy)
-        path.join(REPORTS_DIR, 'archive', date, 'raw_data', filename),
+        path.join(REPORTS_DIR, 'archive', date, 'raw_data', filename)
     ];
 
     for (const loc of locations) {
@@ -145,7 +145,7 @@ router.get('/dashboard', (req, res) => {
     const date = req.query.date || getAvailableDates()[0] || new Date().toISOString().split('T')[0];
     
     // Prepend date to filename since files are named "YYYY-MM-DD_filename.json"
-    let portfolio = readReportJSON(date, `${date}_portfolio_snapshot.json`);
+    const portfolio = readReportJSON(date, `${date}_portfolio_snapshot.json`);
     const valuescreen = readReportJSON(date, `${date}_value_screen.json`);
     const gtt = readReportJSON(date, `${date}_gtt_audit.json`);
     const opportunities = readReportJSON(date, `${date}_opportunities.json`);
@@ -257,9 +257,9 @@ router.get('/data-status', (req, res) => {
             const now = new Date();
             const minutesAgo = (now - execTime) / 60000;
             
-            if (minutesAgo < 5) freshness = 'current';
-            else if (minutesAgo < 30) freshness = 'recent';
-            else freshness = 'stale';
+            if (minutesAgo < 5) {freshness = 'current';}
+            else if (minutesAgo < 30) {freshness = 'recent';}
+            else {freshness = 'stale';}
         } else {
             freshness = 'historical';
         }

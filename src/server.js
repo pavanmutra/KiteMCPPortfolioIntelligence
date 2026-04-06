@@ -12,7 +12,7 @@ function openBrowser(url) {
     const cmd = process.platform === 'win32' ? `start ${url}` :
                 process.platform === 'darwin' ? `open ${url}` : `xdg-open ${url}`;
     exec(cmd, (err) => {
-        if (err) console.warn('Could not auto-open browser:', err.message);
+        if (err) {console.warn('Could not auto-open browser:', err.message);}
     });
 }
 
@@ -28,7 +28,7 @@ app.use((req, res, next) => {
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Content-Type');
-    if (req.method === 'OPTIONS') return res.sendStatus(200);
+    if (req.method === 'OPTIONS') {return res.sendStatus(200);}
     next();
 });
 
@@ -57,7 +57,7 @@ app.use((err, req, res, next) => {
 // Start server
 app.listen(PORT, () => {
     console.log(`\n🚀 KiteMCP Dashboard running at http://localhost:${PORT}`);
-    console.log(`   Press Ctrl+C to stop the server\n`);
+    console.log('   Press Ctrl+C to stop the server\n');
     openBrowser(`http://localhost:${PORT}`);
 });
 

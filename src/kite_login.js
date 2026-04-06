@@ -24,9 +24,9 @@ const G = '\x1b[32m', R = '\x1b[31m', Y = '\x1b[33m', B = '\x1b[34m', X = '\x1b[
 async function callMcpTool(url, toolName, params = {}) {
     return new Promise((resolve, reject) => {
         const body = JSON.stringify({
-            jsonrpc: "2.0",
+            jsonrpc: '2.0',
             id: Date.now(),
-            method: "tools/call",
+            method: 'tools/call',
             params: {
                 name: toolName,
                 arguments: params
@@ -120,7 +120,7 @@ async function main() {
                 const loginUrl = err.data.login_url;
                 
                 console.log(`${Y}⚠️  LOGIN REQUIRED${X}`);
-                console.log(`Your session has expired or is invalid.\n`);
+                console.log('Your session has expired or is invalid.\n');
                 
                 console.log(`${B}Action: Generating dynamic login URL... (OpenCode style)${X}`);
                 console.log(`${G}URL: ${loginUrl}${X}\n`);
@@ -129,17 +129,17 @@ async function main() {
                 if (openBrowser(loginUrl)) {
                     console.log(`${G}✅ Browser opened successfully.${X}\n`);
                     console.log(`${BOLD}Next Steps:${X}`);
-                    console.log(`1. Finish the Zen login in your browser.`);
-                    console.log(`2. Click 'Authorize' when prompted.`);
-                    console.log(`3. Once you see "Login Successful", return here.`);
-                    console.log(`4. Run 'npm run login:status' to verify.\n`);
+                    console.log('1. Finish the Zen login in your browser.');
+                    console.log('2. Click \'Authorize\' when prompted.');
+                    console.log('3. Once you see "Login Successful", return here.');
+                    console.log('4. Run \'npm run login:status\' to verify.\n');
                 } else {
                     console.log(`${R}❌ Failed to auto-open browser.${X}`);
-                    console.log(`Please copy the URL above manually to your browser.\n`);
+                    console.log('Please copy the URL above manually to your browser.\n');
                 }
             } else {
                 console.log(`${R}❌ MCP ERROR: ${err.message}${X}`);
-                if (err.data) console.log(JSON.stringify(err.data, null, 2));
+                if (err.data) {console.log(JSON.stringify(err.data, null, 2));}
                 console.log();
             }
         }
@@ -147,9 +147,9 @@ async function main() {
         console.log(`${R}❌ FAILED TO CONNECT TO MCP SERVER${X}`);
         console.log(`Error: ${e.message}\n`);
         console.log(`${Y}Troubleshooting:${X}`);
-        console.log(`1. Ensure your internet connection is active.`);
-        console.log(`2. Verify the MCP URL in opencode.json is correct.`);
-        console.log(`3. The Kite MCP server might be temporarily down.\n`);
+        console.log('1. Ensure your internet connection is active.');
+        console.log('2. Verify the MCP URL in opencode.json is correct.');
+        console.log('3. The Kite MCP server might be temporarily down.\n');
     }
 }
 

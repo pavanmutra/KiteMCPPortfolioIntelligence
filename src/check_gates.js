@@ -26,10 +26,10 @@ function findGateFile(filename) {
         path.join(reportsDir, today, 'raw_data', filename), path.join(reportsDir, today, filename),
         path.join(reportsDir, today, 'reports', filename.replace(`${today}_`, '')),
         path.join(reportsDir, today, 'exports', filename.replace(`Portfolio_${today}`, 'Portfolio')),
-        path.join(reportsDir, today, 'exports', filename.replace(`Weekly_Portfolio_${today}`, 'Weekly_Portfolio')),
+        path.join(reportsDir, today, 'exports', filename.replace(`Weekly_Portfolio_${today}`, 'Weekly_Portfolio'))
     ];
     for (const c of candidates) {
-        if (fs.existsSync(c)) return c;
+        if (fs.existsSync(c)) {return c;}
     }
     return null;
 }

@@ -21,15 +21,15 @@ const REPORTS_DIR = path.join(__dirname, '../reports');
 function findReport(date, filename) {
     // Check today's reports root first
     const rootPath = path.join(REPORTS_DIR, `${date}_${filename}`);
-    if (fs.existsSync(rootPath)) return readJsonFile(rootPath);
+    if (fs.existsSync(rootPath)) {return readJsonFile(rootPath);}
 
     // Check archive/YYYY-MM-DD/ folder (date prefix stripped)
     const archivePath = path.join(REPORTS_DIR, 'archive', date, filename);
-    if (fs.existsSync(archivePath)) return readJsonFile(archivePath);
+    if (fs.existsSync(archivePath)) {return readJsonFile(archivePath);}
 
     // Check archive with date prefix (in case not stripped)
     const archiveWithDate = path.join(REPORTS_DIR, 'archive', date, `${date}_${filename}`);
-    if (fs.existsSync(archiveWithDate)) return readJsonFile(archiveWithDate);
+    if (fs.existsSync(archiveWithDate)) {return readJsonFile(archiveWithDate);}
 
     return null;
 }
@@ -40,12 +40,12 @@ const valueData         = findReport(reportDate, 'value_screen.json');
 const commodityData     = findReport(reportDate, 'commodity_opportunities.json');
 
 const rawHoldings = currentPortfolio?.holdings || [
-    { symbol: "TMCV", quantity: 110, average_price: 355.37, last_price: 431.85, pnl: 8412.26, pnl_percent: 21.53 },
-    { symbol: "NXST-RR", quantity: 650, average_price: 135.19, last_price: 155.52, pnl: 13217.14, pnl_percent: 14.4 },
-    { symbol: "IOB", quantity: 7849, average_price: 38.51, last_price: 33.72, pnl: -37634, pnl_percent: -12.4 },
-    { symbol: "JINDALPHOT", quantity: 85, average_price: 1320.71, last_price: 1141.4, pnl: -15241, pnl_percent: -13.6 },
-    { symbol: "VHL", quantity: 35, average_price: 3608.39, last_price: 3148.2, pnl: -16107, pnl_percent: -12.8 },
-    { symbol: "CAMS", quantity: 228, average_price: 713.99, last_price: 644.20, pnl: -15912, pnl_percent: -9.8 }
+    { symbol: 'TMCV', quantity: 110, average_price: 355.37, last_price: 431.85, pnl: 8412.26, pnl_percent: 21.53 },
+    { symbol: 'NXST-RR', quantity: 650, average_price: 135.19, last_price: 155.52, pnl: 13217.14, pnl_percent: 14.4 },
+    { symbol: 'IOB', quantity: 7849, average_price: 38.51, last_price: 33.72, pnl: -37634, pnl_percent: -12.4 },
+    { symbol: 'JINDALPHOT', quantity: 85, average_price: 1320.71, last_price: 1141.4, pnl: -15241, pnl_percent: -13.6 },
+    { symbol: 'VHL', quantity: 35, average_price: 3608.39, last_price: 3148.2, pnl: -16107, pnl_percent: -12.8 },
+    { symbol: 'CAMS', quantity: 228, average_price: 713.99, last_price: 644.20, pnl: -15912, pnl_percent: -9.8 }
 ];
 
 const lastWeekHoldings = lastWeekPortfolio?.holdings || [];
@@ -71,10 +71,10 @@ const holdings = rawHoldings.map(h => {
 const lastWeekMap = new Map(lastWeekHoldings.map(h => [h.symbol, h]));
 
 const commodities = commodityData?.commodities || [
-    { symbol: "GOLD", price: 74500, change_percent: 0.52 },
-    { symbol: "SILVER", price: 89500, change_percent: -0.32 },
-    { symbol: "CRUDE", price: 5200, change_percent: 1.25 },
-    { symbol: "NATURALGAS", price: 180, change_percent: -2.15 }
+    { symbol: 'GOLD', price: 74500, change_percent: 0.52 },
+    { symbol: 'SILVER', price: 89500, change_percent: -0.32 },
+    { symbol: 'CRUDE', price: 5200, change_percent: 1.25 },
+    { symbol: 'NATURALGAS', price: 180, change_percent: -2.15 }
 ];
 
 const wb = new Workbook();

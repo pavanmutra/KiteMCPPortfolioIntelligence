@@ -30,7 +30,7 @@ function logToFile(level, message, err = null) {
         logLine += '\n';
         fs.appendFileSync(LOG_FILE, logLine, 'utf8');
     } catch (e) {
-        console.error("Failed to write to log file:", e);
+        console.error('Failed to write to log file:', e);
     }
 }
 

@@ -55,7 +55,7 @@ function convertDeepValueMarkdown() {
           sales5y,
           mcap,
           score,
-          risk,
+          risk
         ] = cells;
 
         result.push({
@@ -71,7 +71,7 @@ function convertDeepValueMarkdown() {
           sales5y: parseFloat(sales5y.replace('%', '')) || 0,
           mcap: parseFloat(mcap.replace(/,/g, '')) || 0,
           score,
-          risk,
+          risk
         });
       }
     }

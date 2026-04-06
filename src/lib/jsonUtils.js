@@ -110,12 +110,12 @@ function findReport(date, filename, reportsDir) {
         // 4. Archive with date prefix: reports/archive/YYYY-MM-DD/YYYY-MM-DD_filename
         path.join(dir, 'archive', date, `${date}_${filename}`),
         // 5. Archive organized: reports/archive/YYYY-MM-DD/data/filename
-        path.join(dir, 'archive', date, 'data', filename),
+        path.join(dir, 'archive', date, 'data', filename)
     ];
     
     for (const p of searchPaths) {
         const result = readJsonFile(p);
-        if (result) return result;
+        if (result) {return result;}
     }
     
     return null;

@@ -1,0 +1,63 @@
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: UTC
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: 'deps'
+      include: 'scope'
+    labels:
+      - dependencies
+      - npm
+    reviewers:
+      - pavanmutra
+    groups:
+      production-dependencies:
+        patterns:
+          - '*'
+        exclude-patterns:
+          - '@types/*'
+          - 'eslint*'
+          - 'husky*'
+          - 'lint-staged*'
+        update-types:
+          - minor
+          - patch
+      development-dependencies:
+        patterns:
+          - '@types/*'
+          - 'eslint*'
+          - 'husky*'
+          - 'lint-staged*'
+        update-types:
+          - patch
+    versioning-strategy: increase
+    allow:
+      - dependency-type: production
+      - dependency-type: development
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:30'
+      timezone: UTC
+    commit-message:
+      prefix: 'ci'
+      include: 'scope'
+    labels:
+      - ci
+      - github-actions
+    groups:
+      actions:
+        patterns:
+          - '*'
+        update-types:
+          - patch
