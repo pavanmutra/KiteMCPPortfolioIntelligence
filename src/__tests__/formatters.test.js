@@ -124,7 +124,13 @@ describe('Formatters', () => {
                 qty: 110,
                 avg: 355.37,
                 last: 431.85,
-                pnl: 8412.26
+                pnl: 8412.26,
+                t1_quantity: 0,
+                avg_price: 355.37,
+                current_price: 431.85,
+                pnl_pct: 0,
+                mos_pct: 0,
+                intrinsic_value_avg: 0
             });
         });
 
@@ -142,7 +148,13 @@ describe('Formatters', () => {
                 qty: 650,
                 avg: 135.19,
                 last: 155.52,
-                pnl: 13217.14
+                pnl: 13217.14,
+                t1_quantity: 0,
+                avg_price: 135.19,
+                current_price: 155.52,
+                pnl_pct: 0,
+                mos_pct: 0,
+                intrinsic_value_avg: 0
             });
         });
 
@@ -172,7 +184,13 @@ describe('Formatters', () => {
                 qty: 0,
                 avg: 0,
                 last: 0,
-                pnl: 0
+                pnl: 0,
+                t1_quantity: 0,
+                avg_price: 0,
+                current_price: 0,
+                pnl_pct: 0,
+                mos_pct: 0,
+                intrinsic_value_avg: 0
             });
         });
 

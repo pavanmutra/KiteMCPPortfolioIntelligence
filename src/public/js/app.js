@@ -29,7 +29,8 @@
         isRefreshing: false,
         activeTab: 'holdings',
         activeHorizon: 'all',
-        isMasked: false
+        isMasked: false,
+        deepValueSort: { column: 'score', direction: 'desc' }
     };
 
     // ============================================
@@ -113,8 +114,7 @@
     }
 
     function getMosValue(holding) {
-        // Handle multiple field names: mos_pct, margin_of_safety_pct, margin_of_safety
-        return holding.mos_pct ?? holding.margin_of_safety_pct ?? holding.margin_of_safety?.mos_pct ?? 0;
+        return holding.mos_pct ?? 0;
     }
 
     function escapeHtml(text) {
@@ -122,6 +122,53 @@
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+
+    // ============================================
+    // Sorting Functions - Deep Value
+    // ============================================
+    function sortDeepValue(column) {
+        const currentSort = state.deepValueSort;
+        
+        if (currentSort.column === column) {
+            state.deepValueSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+        } else {
+            state.deepValueSort = { column: column, direction: 'asc' };
+        }
+        
+        updateSortIcons('deepValue', column, state.deepValueSort.direction);
+        renderDeepValueScreener();
+    }
+
+    function updateSortIcons(tableId, column, direction) {
+        document.querySelectorAll(`#panel-${tableId} th.sortable`).forEach(th => {
+            const col = th.getAttribute('onclick')?.match(/sort\w+\('(\w+)'\)/)?.[1];
+            const icon = th.querySelector('.sort-icon');
+            if (icon) {
+                if (col === column) {
+                    icon.textContent = direction === 'asc' ? ' ▲' : ' ▼';
+                } else {
+                    icon.textContent = '';
+                }
+            }
+        });
+    }
+
+    function getSortValue(item, column) {
+        switch(column) {
+            case 'company': return (item.company || '').toLowerCase();
+            case 'ticker': return (item.ticker || '').toLowerCase();
+            case 'category': return (item.category || '').toLowerCase();
+            case 'pe': return parseFloat(item.pe) || 0;
+            case 'pb': return parseFloat(item.pb) || 0;
+            case 'roe': return parseFloat(item.roe) || 0;
+            case 'de': return parseFloat(item.de) || 0;
+            case 'score': 
+                const scoreNum = parseInt((item.score || '0').split('/')[0]);
+                return scoreNum;
+            case 'risk': return (item.risk || '').toLowerCase();
+            default: return '';
+        }
     }
 
     function formatTime(date) {
@@ -207,7 +254,7 @@
         const portfolio = data?.portfolio;
         
         if (portfolio) {
-            const totalValue = portfolio.total_value || 0;
+            const totalValue = portfolio.total_value || portfolio.total_market_value || 0;
             const totalPnl = portfolio.total_pnl || 0;
             const totalPnlPct = portfolio.total_pnl_pct || 0;
             const margin = portfolio.available_margin || 0;
@@ -310,7 +357,7 @@
         let discounts = [];
         if (valuescreen?.holdings_analysis) {
             discounts = valuescreen.holdings_analysis.filter(h => {
-                const mos = h.margin_of_safety?.mos_pct ?? h.mos_pct ?? h.margin_of_safety_pct ?? 0;
+                const mos = h.mos_pct ?? 0;
                 return mos > 25;
             });
         }
@@ -323,7 +370,7 @@
         // Also check stocks array
         if (!discounts.length && valuescreen?.stocks) {
             discounts = valuescreen.stocks.filter(s => {
-                const mos = s.margin_of_safety_pct ?? s.margin_of_safety?.mos_pct ?? s.mos_pct ?? 0;
+                const mos = s.mos_pct ?? s.margin_of_safety_pct ?? 0;
                 return mos > 25;
             });
         }
@@ -336,9 +383,9 @@
         }
         
         const cards = discounts.map(s => {
-            const mos = s.margin_of_safety_pct ?? s.margin_of_safety?.mos_pct ?? s.mos_pct ?? 0;
+            const mos = s.mos_pct ?? s.margin_of_safety_pct ?? 0;
             const price = s.current_price || s.last_price || 0;
-            const iv = s.valuation?.intrinsic_value_avg ?? s.intrinsic_value_avg ?? s.valuation?.graham_number ?? s.intrinsic_value ?? 0;
+            const iv = s.intrinsic_value_avg ?? s.intrinsic_value ?? 0;
             const action = s.action_signal || s.action || 'ACCUMULATE';
             
             return `
@@ -586,6 +633,19 @@
                 (d.company || '').toLowerCase().includes(searchTerm) ||
                 (d.ticker || '').toLowerCase().includes(searchTerm)
             );
+        }
+
+        // Apply sorting
+        const { column, direction } = state.deepValueSort;
+        if (column) {
+            data.sort((a, b) => {
+                const valA = getSortValue(a, column);
+                const valB = getSortValue(b, column);
+                if (typeof valA === 'string') {
+                    return direction === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+                }
+                return direction === 'asc' ? valA - valB : valB - valA;
+            });
         }
 
         // Build table rows
@@ -1044,6 +1104,9 @@
         await loadDashboard(state.currentDate);
         await checkDataFreshness();
     };
+
+    // Expose sorting function globally for onclick handlers
+    window.sortDeepValue = sortDeepValue;
 
     // Start the application
     if (document.readyState === 'loading') {

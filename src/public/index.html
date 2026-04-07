@@ -225,15 +225,15 @@
                         <table class="data-table" id="deepValueTable">
                             <thead>
                                 <tr>
-                                    <th scope="col">Company</th>
-                                    <th scope="col">Ticker</th>
-                                    <th scope="col">Sector</th>
-                                    <th scope="col" class="text-right">P/E</th>
-                                    <th scope="col" class="text-right">P/B</th>
-                                    <th scope="col" class="text-right">ROE %</th>
-                                    <th scope="col" class="text-right">D/E</th>
-                                    <th scope="col" class="text-right">Score</th>
-                                    <th scope="col">Risk</th>
+                                    <th scope="col" class="sortable" onclick="sortDeepValue('company')">Company <span class="sort-icon"></span></th>
+                                    <th scope="col" class="sortable" onclick="sortDeepValue('ticker')">Symbol <span class="sort-icon"></span></th>
+                                    <th scope="col" class="sortable" onclick="sortDeepValue('category')">Sector <span class="sort-icon"></span></th>
+                                    <th scope="col" class="text-right sortable" onclick="sortDeepValue('pe')">P/E <span class="sort-icon"></span></th>
+                                    <th scope="col" class="text-right sortable" onclick="sortDeepValue('pb')">P/B <span class="sort-icon"></span></th>
+                                    <th scope="col" class="text-right sortable" onclick="sortDeepValue('roe')">ROE % <span class="sort-icon"></span></th>
+                                    <th scope="col" class="text-right sortable" onclick="sortDeepValue('de')">D/E <span class="sort-icon"></span></th>
+                                    <th scope="col" class="text-right sortable" onclick="sortDeepValue('score')">Score <span class="sort-icon"></span></th>
+                                    <th scope="col" class="sortable" onclick="sortDeepValue('risk')">Risk <span class="sort-icon"></span></th>
                                 </tr>
                             </thead>
                             <tbody id="deepValueBody">

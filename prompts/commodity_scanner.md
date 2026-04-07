@@ -190,8 +190,14 @@ Apply **Output Validation Contract** from `_base.md` before saving.
     "global_demand": "China demand mixed, India demand strong"
   },
   "portfolio_note": "Max 5% portfolio allocation to commodities (via ETFs)"
-}
-```
+  }
+  ```
+
+## Canonical Output Rules
+- Emit `change_percent` and `change_pct` with the same numeric value.
+- Always include `price`, `unit`, `trend`, `recommendation`, and `data_status`.
+- Use `name` for the commodity label and do not rename it.
+- Keep `commodities` as a flat array of four instruments when data is available.
 
 ## Save Output
 Save to: `reports/YYYY-MM-DD_commodity_opportunities.json`

@@ -107,6 +107,12 @@
   ```
 </JSON_SCHEMA_CONTRACT>
 
+## Canonical Output Rules
+- Always include `total_holdings`, `total_active_gtts`, `protection_ratio`, `active_gtts`, `protected_holdings`, `unprotected_holdings`, `issues`, `triggered_gtts`, and `duplicate_gtts`.
+- `protected_holdings` and `unprotected_holdings` must be arrays of symbols, not objects.
+- Use canonical stop-loss direction rules: stop-loss `trigger_price` below CMP and `transaction_type` must be `SELL`.
+- Emit `is_stale` and `qty_match` for every active GTT record.
+
 <DOWNSTREAM_DEPENDENCIES>
   - GTT Protection Status consumed by `create_daily_report.js`
   - Unprotected holdings consumed by `report_generator.md`

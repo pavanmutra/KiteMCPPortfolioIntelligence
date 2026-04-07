@@ -8,7 +8,7 @@ const path = require('path');
  */
 
 const REPORTS_DIR = path.join(__dirname, '../reports');
-const SESSION_DATE = '2026-03-31';
+const SESSION_DATE = new Date().toISOString().split('T')[0];
 
 // Master data reference from portfolio_snapshot.json (source of truth)
 const MASTER_DATA = {
@@ -286,9 +286,10 @@ class VerificationGate {
     console.log('\n🔗 CATEGORY D: Cross-Report Consistency');
     let points = 0;
 
-    // Check 1: Portfolio value consistency
-    const portfolioValue = this.data['portfolio_snapshot.json']?.total_market_value;
-    const gateStatusValue = this.data['gate_status.json']?.gate_completion_matrix?.GATE_2_portfolio_scan?.total_market_value;
+    // Check 1: Portfolio value consistency (support both old and new field names)
+    const snapshotData = this.data['portfolio_snapshot.json'];
+    const portfolioValue = snapshotData?.total_market_value || snapshotData?.total_value;
+    const gateStatusValue = this.data['gate_status.json']?.gate_completion_matrix?.GATE_2_portfolio_scan?.total_market_value || this.data['gate_status.json']?.gate_completion_matrix?.GATE_2_portfolio_scan?.total_value;
     const gttPlacementValue = this.data['gtt_placement.json']?.portfolio_context?.total_portfolio_value;
 
     const valueDifferences = [];

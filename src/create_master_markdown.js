@@ -8,6 +8,7 @@ const reportDate = today;
 
 const DAILY_DIR = path.join(__dirname, '../reports', reportDate);
 const RAW_DIR = path.join(DAILY_DIR, 'raw_data');
+const MARGIN_SNAPSHOT = path.join(RAW_DIR, `${reportDate}_kite_margins.json`);
 
 ensureDir(DAILY_DIR);
 ensureDir(RAW_DIR);
@@ -40,6 +41,18 @@ function readRawJSON(filename) {
     }
 }
 
+function readAvailableMargin() {
+    try {
+        if (fs.existsSync(MARGIN_SNAPSHOT)) {
+            const snapshot = JSON.parse(fs.readFileSync(MARGIN_SNAPSHOT, 'utf8'));
+            return snapshot?.equity?.available?.live_balance ?? snapshot?.equity?.net ?? 0;
+        }
+    } catch (err) {
+        logger.warn(`Could not read margin snapshot: ${err.message}`);
+    }
+    return portfolioData?.available_margin || 0;
+}
+
 const portfolioData  = readRawJSON(`${reportDate}_portfolio_snapshot.json`);
 const valueData      = readRawJSON(`${reportDate}_value_screen.json`);
 const gttData        = readRawJSON(`${reportDate}_gtt_audit.json`);
@@ -63,10 +76,10 @@ if (gttData?.unprotected_holdings?.length > 0) {
 }
 
 if (valueData?.stocks) {
-    const deepDiscounts = valueData.stocks.filter(s => (s.margin_of_safety_pct || s.margin_of_safety || 0) > 40);
+    const deepDiscounts = valueData.stocks.filter(s => (s.margin_of_safety_pct || s.margin_of_safety || 0) > 25);
     if (deepDiscounts.length > 0) {
         actionsFound = true;
-        md += '### 🔴 Deep Discount Alerts (MoS > 40%)\n';
+        md += '### 🔴 Deep Discount Alerts (MoS > 25%)\n';
         deepDiscounts.forEach(s => {
             const mos = s.margin_of_safety_pct || s.margin_of_safety || 0;
             md += `- **${s.symbol}**: CMP ₹${s.current_price} vs IV ₹${s.intrinsic_value_avg || s.intrinsic_value}. Discount: ${mos.toFixed(1)}%. Action: ${s.action_signal || 'ACCUMULATE'}\n`;
@@ -98,7 +111,7 @@ if (portfolioData) {
     md += `- **Total Value**: ₹${(portfolioData.total_value || 0).toLocaleString('en-IN')}\n`;
     md += `- **Day P&L**: ₹${(portfolioData.day_pnl || 0).toLocaleString('en-IN')} (${(portfolioData.day_pnl_pct || 0).toFixed(2)}%)\n`;
     md += `- **Total P&L**: ₹${(portfolioData.total_pnl || 0).toLocaleString('en-IN')} (${(portfolioData.total_pnl_pct || 0).toFixed(2)}%)\n`;
-    md += `- **Available Cash/Margin**: ₹${(portfolioData.available_margin || 0).toLocaleString('en-IN')}\n\n`;
+    md += `- **Available Cash/Margin**: ₹${readAvailableMargin().toLocaleString('en-IN')}\n\n`;
     
     if (portfolioData.holdings && portfolioData.holdings.length > 0) {
         md += '### Holdings\n\n';

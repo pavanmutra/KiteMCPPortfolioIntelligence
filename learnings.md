@@ -1013,9 +1013,10 @@ These rules are auto-checked by agents. Any violation = hard stop.
  37  Dashboard data is stale until AI refresh completes  T-010
  38  Compute missing fields client-side (qty×price)      T-012
  39  Use flexible field mapping for T+1 pending stocks   T-012
- 40  Mock process.exit before require() in Jest tests    T-013
- 41  Test files with guard if require.main===module      T-013
- 42  Use typeof check not Array.isArray for null guard   T-013
+40  Mock process.exit before require() in Jest tests    T-013
+41  Test files with guard if require.main===module      T-013
+42  Use typeof check not Array.isArray for null guard   T-013
+43  Use total_value (not total_market_value) for dashboard  T-014
  ─────────────────────────────────────────────────────────────────────
 ```
 

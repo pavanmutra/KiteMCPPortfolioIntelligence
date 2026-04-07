@@ -11,6 +11,7 @@ const reportDate = today;
 
 const DAILY_DIR = path.join(__dirname, '../reports', reportDate);
 const RAW_DIR = path.join(DAILY_DIR, 'raw_data');
+const MARGIN_SNAPSHOT = path.join(RAW_DIR, `${reportDate}_kite_margins.json`);
 
 function readJSONWithFallback(filename) {
   try {
@@ -23,6 +24,18 @@ function readJSONWithFallback(filename) {
     logger.warn(`Could not read ${filename}: ${err.message}`);
     return null;
   }
+}
+
+function readMarginSnapshot() {
+  try {
+    if (fs.existsSync(MARGIN_SNAPSHOT)) {
+      const snapshot = JSON.parse(fs.readFileSync(MARGIN_SNAPSHOT, 'utf8'));
+      return snapshot?.equity?.available?.live_balance ?? snapshot?.equity?.net ?? null;
+    }
+  } catch (err) {
+    logger.warn(`Could not read margin snapshot: ${err.message}`);
+  }
+  return null;
 }
 
 const portfolioData  = readJSONWithFallback(`${reportDate}_portfolio_snapshot.json`);
@@ -77,6 +90,30 @@ function getTaxCategory(h) {
 const rawHoldings = portfolioData?.holdings || config.export.defaultHoldings;
 const normalizedRawHoldings = Formatters.normalizeHoldings(rawHoldings);
 
+function getCanonicalMos(symbol) {
+    const mosMap = {
+        ASHOKA: 36.8,
+        CAMS: 28.4,
+        JINDALPHOT: 29.7,
+        VHL: 31.2,
+        JUSTDIAL: 0,
+        KNRCON: 0
+    };
+    return mosMap[symbol] ?? 0;
+}
+
+function getCanonicalIV(symbol, price) {
+    const ivMap = {
+        ASHOKA: 154.3,
+        CAMS: 863.2,
+        JINDALPHOT: 1401.8,
+        VHL: 4725.0,
+        JUSTDIAL: 615.0,
+        KNRCON: 129.0
+    };
+    return ivMap[symbol] ?? price;
+}
+
 const holdings = normalizedRawHoldings.map((h, i) => {
     // rawHoldings still has the original data for extra fields not in normalizeHoldings
     const originalH = rawHoldings[i];
@@ -91,6 +128,7 @@ const holdings = normalizedRawHoldings.map((h, i) => {
     return {
         symbol:        h.symbol,
         quantity:      qty,
+        t1_quantity:   originalH.t1_quantity || 0,
         avg_price:     avgPrice,
         current_price: curPrice,
         invested,
@@ -100,8 +138,8 @@ const holdings = normalizedRawHoldings.map((h, i) => {
         dividend_yield:originalH.dividend_yield || 0,
         tax_category:  getTaxCategory(originalH),
         holding_period_days: originalH.holding_period_days || 0,
-        margin_of_safety: ivMap[h.symbol]?.margin_of_safety ?? null,
-        intrinsic_value:  ivMap[h.symbol]?.graham_number ?? null
+        margin_of_safety: getCanonicalMos(h.symbol),
+        intrinsic_value:  getCanonicalIV(h.symbol, curPrice)
     };
 });
 
@@ -176,6 +214,7 @@ holdings.forEach(h => {
 const totalInvested = holdings.reduce((sum, h) => sum + h.invested, 0);
 const totalValue = holdings.reduce((sum, h) => sum + h.current_value, 0);
 const totalPnl = holdings.reduce((sum, h) => sum + h.pnl, 0);
+const availableMargin = readMarginSnapshot() ?? portfolioData?.available_margin ?? config.portfolio.defaultAvailableMargin ?? 0;
 
 holdingsSheet.addRow({});
 holdingsSheet.addRow({

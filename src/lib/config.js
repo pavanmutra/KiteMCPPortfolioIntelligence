@@ -14,7 +14,7 @@ module.exports = {
             { symbol: 'TMCV',       quantity: 110,  average_price: 355.37,  last_price: 431.85,  pnl: 8412.26   },
             { symbol: 'VHL',        quantity: 35,   average_price: 3608.39, last_price: 3143.40, pnl: -16274.50 }
         ],
-        defaultAvailableMargin: 1999661.80
+        defaultAvailableMargin: null
     },
 
     // Export defaults

@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const SESSION_DATE = '2026-03-31';
+const SESSION_DATE = new Date().toISOString().split('T')[0];
 
 console.log('\n╔════════════════════════════════════════════════════════════╗');
 console.log('║       GATE 8: FINAL COMPREHENSIVE VERIFICATION REPORT      ║');
@@ -25,7 +25,7 @@ const report = {
 console.log('1️⃣  PORTFOLIO VALUE VERIFICATION');
 console.log('═══════════════════════════════════════════════════════════');
 
-const pvSnapshot = snapshot.total_market_value;
+const pvSnapshot = snapshot.total_market_value || snapshot.total_value;
 const pvGTT = gttPlacement.portfolio_context?.total_portfolio_value;
 const pvMatch = pvSnapshot === pvGTT;
 
@@ -54,7 +54,7 @@ console.log('\n2️⃣  HOLDINGS CONSISTENCY');
 console.log('═══════════════════════════════════════════════════════════');
 
 const snapshotHoldings = (snapshot.holdings || []).map(h => h.symbol).sort();
-const valueScreenStocks = (valueScreen.stocks || []).map(s => s.symbol).sort();
+const valueScreenStocks = (valueScreen.stocks || valueScreen.valuations || []).map(s => s.symbol).sort();
 const gttAuditAll = [
   ...(gttAudit.protected_holdings || []).map(h => h.symbol),
   ...(gttAudit.unprotected_holdings || []).map(h => h.symbol)

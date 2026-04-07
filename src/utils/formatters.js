@@ -24,7 +24,13 @@ class Formatters {
             qty: h.quantity || h.qty || 0,
             avg: h.average_price || h.avg || h.avg_price || 0,
             last: h.current_price || h.last_price || h.last || 0,
-            pnl: h.pnl || 0
+            pnl: h.pnl || 0,
+            t1_quantity: h.t1_quantity || 0,
+            avg_price: h.average_price || h.avg || h.avg_price || 0,
+            current_price: h.current_price || h.last_price || h.last || 0,
+            pnl_pct: h.pnl_pct || h.pnl_percent || 0,
+            mos_pct: h.mos_pct || h.margin_of_safety_pct || 0,
+            intrinsic_value_avg: h.intrinsic_value_avg || 0
         }));
     }
 }

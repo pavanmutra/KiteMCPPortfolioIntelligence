@@ -124,8 +124,8 @@ describe('config', () => {
             expect(config.portfolio.defaultHoldings).toHaveLength(6);
         });
 
-        test('defaultAvailableMargin is defined', () => {
-            expect(config.portfolio.defaultAvailableMargin).toBeGreaterThan(0);
+        test('defaultAvailableMargin is null and sourced from Kite snapshot', () => {
+            expect(config.portfolio.defaultAvailableMargin).toBeNull();
         });
     });
 

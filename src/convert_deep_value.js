@@ -88,6 +88,24 @@ function convertDeepValueMarkdown() {
   console.log(`[Deep Value Converter] Parsed ${result.length} stocks across categories.`);
 }
 
+function normalizeOutput(records) {
+  return records.map(item => ({
+    category: item.category,
+    company: item.company,
+    ticker: item.ticker,
+    pe: Number(item.pe) || 0,
+    pb: Number(item.pb) || 0,
+    roe: Number(item.roe) || 0,
+    de: Number(item.de) || 0,
+    promo: Number(item.promo) || 0,
+    pledge: Number(item.pledge) || 0,
+    sales5y: Number(item.sales5y) || 0,
+    mcap: Number(item.mcap) || 0,
+    score: item.score,
+    risk: item.risk
+  }));
+}
+
 if (require.main === module) {
   convertDeepValueMarkdown();
 }

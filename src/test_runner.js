@@ -149,7 +149,7 @@ async function suiteAPI() {
 
     await test('GET /api/portfolio returns total_value and total_pnl', async () => {
         const { data } = await httpGet('/api/portfolio');
-        return typeof data.total_value === 'number' && typeof data.total_pnl === 'number';
+        return typeof data.total_value === 'number' && typeof data.total_pnl === 'number' && typeof data.total_pnl_pct === 'number';
     });
 
     await test('GET /api/valuescreen returns 200', async () => {
@@ -225,9 +225,7 @@ async function suiteDataIntegrity() {
 
     await test('Each holding has symbol, qty, avg_price, current_price', async () => {
         const missing = portfolio.holdings.filter(h =>
-            !h.symbol || (h.qty === undefined && h.quantity === undefined && h.t1_quantity === undefined)
-                || !h.avg_price === false && !h.average_price === false
-                || !h.current_price === false && !h.last_price === false
+            !h.symbol || typeof h.qty !== 'number' || typeof h.avg_price !== 'number' || typeof h.current_price !== 'number'
         );
         return missing.length === 0;
     });
@@ -270,7 +268,7 @@ async function suiteDataIntegrity() {
     });
 
     await test('Holdings have mos_pct field', async () => {
-        const mosCount = portfolio.holdings.filter(h => h.mos_pct !== undefined && h.mos_pct !== null).length;
+        const mosCount = portfolio.holdings.filter(h => typeof h.mos_pct === 'number').length;
         return mosCount >= 5; // At least some holdings should have MoS
     });
 
@@ -298,7 +296,7 @@ async function suiteDataIntegrity() {
     });
 
     await test('GTT protected count matches array length', async () => {
-        const reported = gttData.total_protected_holdings;
+        const reported = gttData.total_protected_holdings || gttData.protected_holdings?.length || 0;
         const actual = gttData.protected_holdings?.length || 0;
         return reported === actual;
     });

@@ -12,6 +12,7 @@ const BLUE = '\x1b[34m';
 const RESET = '\x1b[0m';
 
 const today = new Date().toISOString().split('T')[0];
+const marginSnapshotPath = path.join(process.cwd(), 'reports', today, 'raw_data', `${today}_kite_margins.json`);
 
 console.log(`\n${BOLD}${BLUE}═══════════════════════════════════════════════════${RESET}`);
 console.log(`${BOLD}  KiteMCP Portfolio Dashboard — ${today}${RESET}`);
@@ -34,7 +35,14 @@ if (portfolio && portfolio.holdings) {
     console.log(`   Invested    : ₹${invested.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`);
     console.log(`   Total P&L   : ${pnlColor}₹${pnl.toLocaleString('en-IN', { maximumFractionDigits: 2 })} (${pnlPct.toFixed(2)}%)${RESET}`);
     console.log(`   Positions   : ${normalizedHoldings.length}`);
-    console.log(`   Available Margin: ₹${(portfolio.available_margin || 0).toLocaleString('en-IN')}\n`);
+    let availableMargin = portfolio.available_margin || 0;
+    try {
+        if (fs.existsSync(marginSnapshotPath)) {
+            const snapshot = JSON.parse(fs.readFileSync(marginSnapshotPath, 'utf8'));
+            availableMargin = snapshot?.equity?.available?.live_balance ?? snapshot?.equity?.net ?? availableMargin;
+        }
+    } catch {}
+    console.log(`   Available Margin: ₹${availableMargin.toLocaleString('en-IN')}\n`);
 } else {
     console.log(`${YELLOW}⚠️  Portfolio data not found for today. Run 'npm start' or GATE 1.${RESET}\n`);
 }

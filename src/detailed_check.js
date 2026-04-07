@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const SESSION_DATE = '2026-03-31';
+const SESSION_DATE = new Date().toISOString().split('T')[0];
 
 console.log('\n🔍 DETAILED DATA CONSISTENCY AUDIT\n');
 
@@ -13,7 +13,7 @@ const valueScreen = JSON.parse(fs.readFileSync(`${SESSION_DATE}_value_screen.jso
 const buyback = JSON.parse(fs.readFileSync(`${SESSION_DATE}_buyback_opportunities.json`, 'utf8'));
 
 console.log('1️⃣  PORTFOLIO VALUE COMPARISON:');
-console.log(`   portfolio_snapshot.json total_market_value: ₹${snapshot.summary?.total_market_value?.toLocaleString('en-IN')}`);
+console.log(`   portfolio_snapshot.json total_market_value: ₹${(snapshot.summary?.total_market_value || snapshot.total_market_value || snapshot.total_value)?.toLocaleString('en-IN')}`);
 console.log(`   gtt_placement.json total_portfolio_value: ₹${gttPlacement.portfolio_context?.total_portfolio_value?.toLocaleString('en-IN')}`);
 
 const discrepancy = Math.abs((snapshot.summary?.total_market_value || 0) - (gttPlacement.portfolio_context?.total_portfolio_value || 0));
@@ -25,7 +25,7 @@ if (discrepancy > 100) {
 
 console.log('\n2️⃣  HOLDINGS COUNT:');
 console.log(`   portfolio_snapshot.json holdings: ${snapshot.holdings?.length || 0} stocks`);
-console.log(`   value_screen.json stocks: ${valueScreen.stocks?.length || 0} stocks`);
+console.log(`   value_screen.json stocks: ${(valueScreen.stocks || valueScreen.valuations || []).length} stocks`);
 console.log(`   gtt_audit.json all stocks: ${(gttAudit.protected_holdings?.length || 0) + (gttAudit.unprotected_holdings?.length || 0)} stocks`);
 
 const snapshotSymbols = (snapshot.holdings || []).map(h => h.symbol).sort();

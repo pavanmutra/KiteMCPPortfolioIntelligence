@@ -28,15 +28,37 @@ const mockOpportunities = [
     { symbol: 'GRASIM', horizon: 'LONG-TERM', target_3m: 2100, upside_3m: 15, catalyst: 'VSF recovery, cement growth', recommendation: 'ACCUMULATE' },
     { symbol: 'KALPATARU', horizon: 'MEDIUM-TERM', target_3m: 950, upside_3m: 22, catalyst: 'Order book growth, EBITDA improvement', recommendation: 'BUY' },
     { symbol: 'AUROBINDO', horizon: 'LONG-TERM', target_3m: 1250, upside_3m: 25, catalyst: 'USFDA approvals, export growth', recommendation: 'ACCUMULATE' },
-    { symbol: 'TILAKNAGAR', horizon: 'MEDIUM-TERM', target_3m: 280, upside_3m: 30, catalyst: 'Brand expansion, profit growth', recommendation: 'BUY' }
+    { symbol: 'TILAKNAGAR', horizon: 'MEDIUM-TERM', target_3m: 280, upside_3m: 30, catalyst: 'Brand expansion, profit growth', recommendation: 'BUY' },
+    { symbol: 'BALKRISHNA', horizon: 'MEDIUM-TERM', target_3m: 3200, upside_3m: 16, catalyst: 'Export mix improvement', recommendation: 'ACCUMULATE' },
+    { symbol: 'CROMPTON', horizon: 'SHORT-TERM', target_3m: 410, upside_3m: 12, catalyst: 'Summer demand, margin resilience', recommendation: 'WATCH' },
+    { symbol: 'KEI', horizon: 'LONG-TERM', target_3m: 4100, upside_3m: 20, catalyst: 'Capex cycle, institutional demand', recommendation: 'BUY' }
 ];
 
 const mockCommodities = [
-    { symbol: 'GOLD', price: 145000, change_percent: 0.52, trend: 'BULLISH', recommendation: 'HOLD' },
-    { symbol: 'SILVER', price: 89500, change_percent: -0.32, trend: 'NEUTRAL', recommendation: 'WATCH' },
-    { symbol: 'CRUDE', price: 5200, change_percent: 1.25, trend: 'BULLISH', recommendation: 'BUY ON DIP' },
-    { symbol: 'NATURALGAS', price: 180, change_percent: -2.15, trend: 'BEARISH', recommendation: 'SELL' }
+    { symbol: 'GOLD', price: 145000, change_percent: 0.52, change_pct: 0.52, trend: 'BULLISH', recommendation: 'HOLD' },
+    { symbol: 'SILVER', price: 89500, change_percent: -0.32, change_pct: -0.32, trend: 'NEUTRAL', recommendation: 'WATCH' },
+    { symbol: 'CRUDE', price: 5200, change_percent: 1.25, change_pct: 1.25, trend: 'BULLISH', recommendation: 'BUY ON DIP' },
+    { symbol: 'NATURALGAS', price: 180, change_percent: -2.15, change_pct: -2.15, trend: 'BEARISH', recommendation: 'SELL' }
 ];
+
+function addHeldAndCanonicalFields(item, index) {
+    const heldSymbols = new Set(['CAMS', 'ENERGY', 'JINDALPHOT', 'NXST-RR', 'TMCV', 'VHL']);
+    return {
+        ...item,
+        company_name: item.company_name || item.symbol,
+        sector: item.sector || 'Diversified',
+        market_cap_cr: item.market_cap_cr || 5000 + index * 1000,
+        pe_ratio: item.pe_ratio || 15 + index,
+        roe: item.roe || 18,
+        debt_to_equity: item.debt_to_equity || 0.8,
+        promoter_holding: item.promoter_holding || 55,
+        entry_range: item.entry_range || `₹${item.target_3m * 0.92}-₹${item.target_3m * 0.95}`,
+        stop_loss: item.stop_loss || `₹${Math.round(item.target_3m * 0.85)}`,
+        confidence_score: item.confidence_score || 80,
+        data_source: item.data_source || 'screener.in + MoneyControl',
+        already_held: heldSymbols.has(item.symbol)
+    };
+}
 
 const mockNews = [
     { source: 'Economic Times', headline: 'Nifty hits fresh high amid FII buying', impact: 7, type: 'MARKET', action: 'MONITOR', symbol: 'NIFTY', sentiment: 'BULLISH' },
@@ -46,7 +68,14 @@ const mockNews = [
 // Save opportunities
 const oppData = {
     date: today,
-    opportunities: mockOpportunities
+    opportunities: mockOpportunities.map(addHeldAndCanonicalFields),
+    scan_summary: {
+        short_term_count: 1,
+        medium_term_count: 4,
+        long_term_count: 3,
+        total_opportunities: 8,
+        filtered_out: 0
+    }
 };
 
 const commData = {

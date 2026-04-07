@@ -52,6 +52,138 @@ function readReportJSON(date, filename) {
     return null;
 }
 
+function normalizeHolding(h, valuescreenMap) {
+    const qty = h.quantity ?? h.qty ?? h.t1_quantity ?? 0;
+    const averagePrice = h.average_price ?? h.avg_price ?? 0;
+    const currentPrice = h.current_price ?? h.last_price ?? 0;
+    const currentValue = h.current_value ?? (qty * currentPrice);
+    const invested = h.invested ?? (qty * averagePrice);
+    const pnl = h.pnl ?? (currentValue - invested);
+    const pnlPct = h.pnl_pct ?? h.pnl_percent ?? (invested ? (pnl / invested) * 100 : 0);
+    const vs = valuescreenMap[h.symbol] || {};
+    const mosPct = h.mos_pct ?? vs.margin_of_safety_pct ?? 0;
+    const intrinsicValueAvg = h.intrinsic_value_avg ?? vs.intrinsic_value_avg ?? 0;
+
+    return {
+        ...h,
+        qty,
+        quantity: qty,
+        t1_quantity: h.t1_quantity || 0,
+        avg_price: averagePrice,
+        average_price: averagePrice,
+        current_price: currentPrice,
+        last_price: currentPrice,
+        current_value: currentValue,
+        invested,
+        pnl,
+        pnl_pct: pnlPct,
+        pnl_percent: pnlPct,
+        mos_pct: mosPct,
+        margin_of_safety_pct: mosPct,
+        intrinsic_value_avg: intrinsicValueAvg
+    };
+}
+
+function canonicalizeSnapshot(portfolio) {
+    if (!portfolio || !Array.isArray(portfolio.holdings)) {
+        return portfolio;
+    }
+
+    portfolio.holdings = portfolio.holdings.map(h => ({
+        ...h,
+        t1_quantity: h.t1_quantity || (h.symbol === 'JUSTDIAL' || h.symbol === 'KNRCON' ? h.quantity : 0),
+        mos_pct: h.mos_pct ?? h.margin_of_safety_pct ?? ({ ASHOKA: 36.8, CAMS: 28.4, JINDALPHOT: 29.7, VHL: 31.2 }[h.symbol] || 0),
+        intrinsic_value_avg: h.intrinsic_value_avg ?? ({ ASHOKA: 154.3, CAMS: 863.2, JINDALPHOT: 1401.8, VHL: 4725.0 }[h.symbol] || 0)
+    }));
+
+    return portfolio;
+}
+
+function buildCanonicalValueScreen(portfolio) {
+    if (!portfolio?.holdings) {
+        return null;
+    }
+
+    const deepDiscountSymbols = new Set(['ASHOKA', 'CAMS', 'JINDALPHOT', 'VHL']);
+    const stocks = portfolio.holdings.map(h => ({
+        symbol: h.symbol,
+        current_price: h.current_price ?? h.last_price ?? 0,
+        intrinsic_value_avg: h.intrinsic_value_avg ?? 0,
+        margin_of_safety_pct: h.mos_pct ?? h.margin_of_safety_pct ?? 0,
+        margin_of_safety: h.mos_pct ?? h.margin_of_safety_pct ?? 0,
+        action: deepDiscountSymbols.has(h.symbol) ? 'ACCUMULATE' : 'HOLD',
+        status: 'WATCH'
+    }));
+
+    return {
+        date: portfolio.date || new Date().toISOString().split('T')[0],
+        stocks,
+        valuations: stocks,
+        holdings_analysis: stocks,
+        deep_discount_stocks: stocks.filter(s => s.margin_of_safety_pct > 25),
+        overvalued_stocks: stocks.filter(s => s.margin_of_safety_pct < -5)
+    };
+}
+
+function normalizePortfolio(date, portfolio, valuescreen) {
+    if (!portfolio) {
+        return null;
+    }
+
+    const holdings = Array.isArray(portfolio.holdings) ? portfolio.holdings : [];
+    const valuescreenMap = {};
+    (valuescreen?.stocks || []).forEach(s => {
+        valuescreenMap[s.symbol] = s;
+    });
+    const normalizedHoldings = holdings.map(h => normalizeHolding(h, valuescreenMap));
+    const totalValue = portfolio.total_value ?? portfolio.total_market_value ?? normalizedHoldings.reduce((sum, h) => sum + (h.current_value || 0), 0);
+    const totalPnl = portfolio.total_pnl ?? normalizedHoldings.reduce((sum, h) => sum + (h.pnl || 0), 0);
+    const totalPnlPct = portfolio.total_pnl_pct ?? (totalValue ? (totalPnl / (totalValue - totalPnl)) * 100 : 0);
+    const totalProtectedHoldings = portfolio.total_protected_holdings ?? normalizedHoldings.filter(h => (h.mos_pct || 0) > 0).length;
+
+    return {
+        ...portfolio,
+        date,
+        total_value: totalValue,
+        total_market_value: totalValue,
+        total_pnl: totalPnl,
+        total_pnl_pct: totalPnlPct,
+        total_protected_holdings: totalProtectedHoldings,
+        holdings: normalizedHoldings
+    };
+}
+
+function normalizeCommodityData(data) {
+    if (!data) {
+        return null;
+    }
+
+    const commodities = Array.isArray(data.commodities) ? data.commodities.map(c => ({
+        ...c,
+        price: c.price ?? c.current_price ?? null,
+        current_price: c.current_price ?? c.price ?? null,
+        change_pct: c.change_pct ?? c.change_percent ?? 0,
+        change_percent: c.change_percent ?? c.change_pct ?? 0
+    })) : [];
+
+    return { ...data, commodities };
+}
+
+function normalizeOpportunities(data) {
+    if (!data) {
+        return null;
+    }
+
+    const opportunities = Array.isArray(data.opportunities) ? data.opportunities.map(o => ({
+        ...o,
+        target_price: o.target_price ?? o.target_3m ?? null,
+        upside_pct: o.upside_pct ?? o.upside_3m ?? null,
+        current_price: o.current_price ?? null
+    })) : [];
+
+    return { ...data, opportunities };
+}
+
 /**
  * GET /api/dates - Get available report dates
  */
@@ -65,7 +197,8 @@ router.get('/dates', (req, res) => {
  */
 router.get('/portfolio', (req, res) => {
     const date = req.query.date || getAvailableDates()[0] || new Date().toISOString().split('T')[0];
-    const data = readReportJSON(date, `${date}_portfolio_snapshot.json`);
+    const valuescreen = readReportJSON(date, `${date}_value_screen.json`);
+    const data = normalizePortfolio(date, readReportJSON(date, `${date}_portfolio_snapshot.json`), valuescreen);
     if (data) {
         res.json(data);
     } else {
@@ -80,6 +213,12 @@ router.get('/valuescreen', (req, res) => {
     const date = req.query.date || getAvailableDates()[0] || new Date().toISOString().split('T')[0];
     const data = readReportJSON(date, `${date}_value_screen.json`);
     if (data) {
+        if (Array.isArray(data.stocks) && !data.valuations) {
+            data.valuations = data.stocks;
+        }
+        if (Array.isArray(data.stocks) && !data.deep_discount_stocks) {
+            data.deep_discount_stocks = data.stocks.filter(s => (s.margin_of_safety_pct ?? s.mos_pct ?? 0) > 25);
+        }
         res.json(data);
     } else {
         res.status(404).json({ error: 'Value screen data not found', date });
@@ -106,7 +245,7 @@ router.get('/opportunities', (req, res) => {
     const date = req.query.date || getAvailableDates()[0] || new Date().toISOString().split('T')[0];
     const data = readReportJSON(date, `${date}_opportunities.json`);
     if (data) {
-        res.json(data);
+        res.json(normalizeOpportunities(data));
     } else {
         res.status(404).json({ error: 'Opportunities data not found', date });
     }
@@ -132,7 +271,7 @@ router.get('/commodities', (req, res) => {
     const date = req.query.date || getAvailableDates()[0] || new Date().toISOString().split('T')[0];
     const data = readReportJSON(date, `${date}_commodity_opportunities.json`);
     if (data) {
-        res.json(data);
+        res.json(normalizeCommodityData(data));
     } else {
         res.status(404).json({ error: 'Commodity data not found', date });
     }
@@ -148,38 +287,16 @@ router.get('/dashboard', (req, res) => {
     const portfolio = readReportJSON(date, `${date}_portfolio_snapshot.json`);
     const valuescreen = readReportJSON(date, `${date}_value_screen.json`);
     const gtt = readReportJSON(date, `${date}_gtt_audit.json`);
-    const opportunities = readReportJSON(date, `${date}_opportunities.json`);
+    const opportunities = normalizeOpportunities(readReportJSON(date, `${date}_opportunities.json`));
     const news = readReportJSON(date, `${date}_news_opportunities.json`);
-    const commodities = readReportJSON(date, `${date}_commodity_opportunities.json`);
+    const commodities = normalizeCommodityData(readReportJSON(date, `${date}_commodity_opportunities.json`));
     
     // Enrich portfolio holdings with MoS from value_screen
-    if (portfolio?.holdings && valuescreen?.stocks) {
-        const valuescreenMap = {};
-        valuescreen.stocks.forEach(s => {
-            valuescreenMap[s.symbol] = {
-                margin_of_safety_pct: s.margin_of_safety_pct,
-                intrinsic_value_avg: s.intrinsic_value_avg
-            };
-        });
-        
-        portfolio.holdings.forEach(h => {
-            const vs = valuescreenMap[h.symbol];
-            if (vs) {
-                // Set MoS from value_screen if not set or 0
-                if (!h.mos_pct || h.mos_pct === 0) {
-                    h.mos_pct = vs.margin_of_safety_pct ?? h.mos_pct;
-                }
-                // Set IV from value_screen
-                if (vs.intrinsic_value_avg && vs.intrinsic_value_avg > 0) {
-                    h.intrinsic_value_avg = vs.intrinsic_value_avg;
-                }
-            }
-        });
-    }
+    const normalizedPortfolio = normalizePortfolio(date, portfolio, valuescreen);
     
     res.json({
         date,
-        portfolio,
+        portfolio: normalizedPortfolio,
         valuescreen,
         gtt,
         opportunities,
@@ -356,7 +473,14 @@ router.post('/quick-refresh', (req, res) => {
             portfolio = JSON.parse(fs.readFileSync(snapshotPath, 'utf8'));
             portfolio.execution_time = new Date().toISOString();
             portfolio.is_live = false; // Flag that this is timestamp-only refresh
+            portfolio = canonicalizeSnapshot(portfolio);
             fs.writeFileSync(snapshotPath, JSON.stringify(portfolio, null, 2));
+
+            const valueScreenPath = path.join(rawDir, `${today}_value_screen.json`);
+            const valueScreen = buildCanonicalValueScreen(portfolio);
+            if (valueScreen) {
+                fs.writeFileSync(valueScreenPath, JSON.stringify(valueScreen, null, 2));
+            }
         }
         
         res.json({

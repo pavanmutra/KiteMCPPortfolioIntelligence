@@ -91,6 +91,12 @@
     1. Date == today.
     2. No NaN, null, or hallucinated types inside arrays.
     3. Filename conforms to metric prefixes.
+    4. Use the canonical field names below and never emit alternate aliases unless explicitly required by the downstream schema.
+       - Portfolio: `total_value`, `total_market_value`, `total_pnl`, `total_pnl_pct`, `available_margin`, `holdings[]`
+       - Holding: `symbol`, `qty`, `avg_price`, `current_price`, `current_value`, `pnl`, `pnl_pct`, `mos_pct`, `intrinsic_value_avg`, `t1_quantity`
+       - Opportunities: `symbol`, `company_name`, `horizon`, `current_price`, `target_3m`, `upside_3m`, `catalyst`, `sector`, `recommendation`, `confidence_score`, `already_held`
+       - Commodities: `symbol`, `name`, `price`, `unit`, `change_percent`, `change_pct`, `trend`, `recommendation`, `data_status`
+       - GTT audit: `date`, `total_holdings`, `total_active_gtts`, `protected_holdings`, `unprotected_holdings`, `issues`, `active_gtts`
   </JSON_VALIDATION_CONTRACT>
 </OPERATIONAL_INSTRUCTIONS>
 

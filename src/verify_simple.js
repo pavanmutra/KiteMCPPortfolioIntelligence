@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const SESSION_DATE = '2026-03-31';
+const SESSION_DATE = new Date().toISOString().split('T')[0];
 const REPORTS_DIR = path.join(__dirname, '../reports');
 
 // Expected file list
@@ -67,10 +67,12 @@ for (const file of jsonFiles) {
 console.log('\n🔗 DATA CONSISTENCY CHECKS:');
 
 try {
-  const snapshot = JSON.parse(fs.readFileSync(path.join(REPORTS_DIR, `${SESSION_DATE}_portfolio_snapshot.json`), 'utf8'));
+  const snapshotPath = path.join(REPORTS_DIR, `${SESSION_DATE}_portfolio_snapshot.json`);
+  const snapshot = JSON.parse(fs.readFileSync(snapshotPath, 'utf8'));
   const gttPlacement = JSON.parse(fs.readFileSync(path.join(REPORTS_DIR, `${SESSION_DATE}_gtt_placement.json`), 'utf8'));
   
-  const portfolioValueSnapshot = snapshot.summary?.total_market_value;
+  // Support both old (total_market_value) and new (total_value) field names
+  const portfolioValueSnapshot = snapshot.summary?.total_market_value || snapshot.total_market_value || snapshot.total_value;
   const portfolioValueGTT = gttPlacement.portfolio_context?.total_portfolio_value;
   
   if (portfolioValueSnapshot && portfolioValueGTT) {

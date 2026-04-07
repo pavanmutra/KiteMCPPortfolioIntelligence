@@ -65,8 +65,6 @@
         "current_price": 780,
         "target_3m": 950,
         "upside_3m": 21.8,
-        "target_12m": 1200,
-        "upside_12m": 53.8,
         "catalyst": "CV recovery, JLR profit growth",
         "sector": "Auto",
         "market_cap_cr": 280000,
@@ -91,6 +89,13 @@
     }
   }
 </ONE_SHOT_EXAMPLE>
+
+## Canonical Output Rules
+- Emit exactly one array named `opportunities` plus `scan_summary`.
+- Use only the canonical fields shown in the example.
+- Keep `target_3m`/`upside_3m` as the primary output pair.
+- Do not emit extra horizon targets or alternate aliases.
+- Set `already_held` from the portfolio snapshot before emitting a symbol.
 
 <SYSTEM_OUTPUT_ROOT>
   You must output ONLY valid JSON.

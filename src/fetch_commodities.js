@@ -63,18 +63,22 @@ async function fetchCommodities() {
                 results.push({
                     symbol,
                     exchange: 'MCX',
+                    name: symbol === 'CRUDEOIL' ? 'Crude Oil' : symbol === 'NATURALGAS' ? 'Natural Gas' : symbol,
+                    price: data.price,
                     current_price: data.price,
                     unit: symbol === 'GOLD' ? 'per 10 gm' : symbol === 'SILVER' ? 'per kg' : 'per barrel',
+                    change_percent: data.change_percent,
                     change_pct: data.change_percent,
                     trend: data.change_percent > 0 ? 'BULLISH' : 'BEARISH',
+                    recommendation: data.change_percent > 0 ? 'HOLD' : 'WATCH',
                     data_status: 'LIVE'
                 });
             } else {
-                results.push({ symbol, exchange: 'MCX', current_price: null, data_status: 'FAILED' });
+                results.push({ symbol, exchange: 'MCX', price: null, current_price: null, change_percent: null, change_pct: null, data_status: 'FAILED' });
             }
         } catch (e) {
             console.error(`Failed to fetch ${symbol}:`, e.message);
-            results.push({ symbol, exchange: 'MCX', current_price: null, data_status: 'FAILED' });
+            results.push({ symbol, exchange: 'MCX', price: null, current_price: null, change_percent: null, change_pct: null, data_status: 'FAILED' });
         }
     }
 
