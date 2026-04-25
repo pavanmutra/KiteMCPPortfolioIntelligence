@@ -1,207 +1,290 @@
-# KiteMCP Portfolio Intelligence — Agent Guidelines
+# KiteMCP Portfolio Intelligence - Agent Guidelines
 
-> This file provides guidance for AI coding agents operating in this repository.
-> It covers build/test commands, code style, error handling, testing patterns, and file organization.
+## MCP Configuration (OpenCode OAuth)
 
----
+The Kite MCP is configured via `opencode.json` using OAuth authentication:
+```json
+{
+  "mcp": {
+    "kite": {
+      "type": "remote",
+      "url": "https://mcp.kite.trade/mcp",
+      "oauth": {}
+    }
+  }
+}
+```
 
-## Quick Commands
+**Important:**
+- NO API key required - uses OAuth browser-based login
+- When a Kite tool is called, OpenCode will prompt for OAuth login
+- A browser window opens to `https://kite.zerodha.com/connect/login?api_key=kitemcp&v=3&redirect_params=session_id%3D...`
+- User logs in with Zerodha credentials and authorizes
+- Session is cached automatically by OpenCode
+
+**Troubleshooting:**
+- "Invalid session ID" = need to complete OAuth login
+- Use any Kite tool to trigger login prompt
+- Session persists until manually logged out
+- If order placement fails after "already logged in" → FORCE FRESH LOGIN:
+  1. Log out from https://kite.zerodha.com completely
+  2. Clear browser session/cookies
+  3. Re-authorize via: https://kite.zerodha.com/connect/login?api_key=kitemcp&v=3
+  4. Test with 1 small order first (READ works ≠ WRITE works)
+
+This file is for agentic coding assistants working in this repository.
+Follow the existing codebase conventions and keep changes minimal unless the task requires otherwise.
+
+## Project Shape
+
+The repo is a Node.js application for portfolio intelligence, reporting, and Kite workflow automation.
+- Core code lives under `src/`
+- Generated outputs land in `reports/`
+- Web dashboard at `src/public/`
+- Prompts for AI agents in `prompts/`
+
+## ⚠️ MANDATORY WORKFLOW ORDER (ALWAYS MCP FIRST)
+
+**ALWAYS follow this exact order — Kite MCP FIRST, then Node Scripts:**
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ STEP 1: KITE MCP TOOLS (ALWAYS FIRST - NO EXCEPTIONS)                      │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ 1. kite_get_holdings()     → Fetch current holdings with live prices       │
+│ 2. kite_get_positions()   → Check current positions (day trades)          │
+│ 3. kite_get_gtts()         → Check GTT status (protected/unprotected)      │
+│ 4. kite_get_ltp()          → Optional: Get LTP for specific symbols       │
+│                                                                             │
+│ ⚠️ Node.js CANNOT call Kite MCP. They are separate systems.                │
+│    Never run Node scripts BEFORE getting fresh data via MCP.                │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                     ↓
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ STEP 2: UPDATE JSON FILES (via AI Agent using prompts)                      │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Create/update these files in reports/YYYY-MM-DD/raw_data/:                  │
+│                                                                             │
+│ • 2026-MM-DD_portfolio_snapshot.json  ← from kite_get_holdings()           │
+│ • 2026-MM-DD_gtt_audit.json           ← from kite_get_gtts()                │
+│ • 2026-MM-DD_value_screen.json        ← AI calculates IV using prompts/     │
+│   └─ prompts/intrinsic_value.md       ← Fetch fundamentals from web        │
+│   └─ For each holding: web search screener.in {SYMBOL} for EPS, BV, P/E    │
+│ • 2026-MM-DD_opportunities.json        ← AI scans via prompts/             │
+│ • 2026-MM-DD_dividend_calendar.json    ← AI fetches via prompts/           │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                     ↓
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ STEP 3: NODE SCRIPTS (ONLY AFTER Step 1 & 2 COMPLETE)                       │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ npm run workflow           → Run full automated workflow                     │
+│ npm run report             → Generate daily Markdown report                 │
+│ npm run export             → Generate portfolio Excel                        │
+│ npm run web                → Start web dashboard                            │
+│                                                                             │
+│ ⚠️ If JSON files are missing/incomplete, npm run workflow will FAIL.       │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Quick Start Command Sequence:**
+```
+1. kite_get_holdings()     ← Start here
+2. kite_get_gtts()         ← Check protection
+3. Save JSON files         ← AI agent task
+4. VERIFY all values       ← Cross-check data accuracy
+5. npm run workflow        ← Only after Step 4
+```
+
+**Verification Checklist (MANDATORY before Step 3):**
+```
+□ Holdings count matches expected
+□ Current prices are reasonable (not stale)
+□ P&L percentages calculated correctly
+□ T+1 quantities noted
+□ GTT statuses verified
+□ JSON schema matches requirements (no missing fields)
+□ Data freshness: < 1 hour old
+□ Total portfolio value matches UI display (cross-check)
+□ Individual holding values (qty × price) match in UI
+□ Day P&L and Total P&L are different values (not same)
+```
+
+## Commands
+
+### Development
+```bash
+npm start              # Run daily workflow (interactive)
+npm run web            # Start web dashboard (auto-opens browser)
+npm run dev            # Start dev server
+npm run refresh        # Refresh live prices via AI
+npm run dashboard      # CLI dashboard (no browser)
+```
+
+### Reporting
+```bash
+npm run report         # Generate daily Markdown report
+npm run export         # Generate portfolio Excel
+npm run export:weekly  # Generate weekly export
+npm run check         # Check gate status
+npm run workflow       # Run automated workflow
+```
+
+### Testing
+```bash
+npm test               # Run all tests
+npm run test:unit      # Unit tests only
+npm run test:integration # Integration tests only
+```
+
+### Other
+```bash
+npm run login          # Kite login
+npm run lint           # Lint code
+npm run lint:fix       # Lint + fix
+```
+
+## JSON Schema Requirements
+
+When creating daily report JSON files, always include ALL fields:
+
+### portfolio_snapshot.json
+- `total_value`, `day_pnl`, `day_pnl_pct`, `total_pnl`, `total_pnl_pct`
+- Each holding: `pnl_percent`, `current_price`, `average_price`
+
+### value_screen.json
+- Each stock: `current_price`, `intrinsic_value`, `margin_of_safety_pct`, `action_signal`
+
+### gtt_audit.json
+- `total_gtts_active`, `total_protected_holdings`, `protected_holdings[]`, `unprotected_holdings[]`
+
+### opportunities.json
+- Each opportunity: `current_price`, `target_price`, `upside_pct`
+
+### dividend_calendar.json
+- `buybacks[]`: [{symbol, company, current_price, buyback_price, premium_pct, record_date}]
+- `sources`: {buybacks: string}
+
+Field mismatch causes "undefined" values in reports.
+
+## Data Files Location
+
+All JSON data files go in:
+```
+reports/YYYY-MM-DD/raw_data/YYYY-MM-DD_*.json
+```
+
+## GTT Workflow
+
+Before placing any GTT:
+1. Fetch `kite_get_gtts()` to check existing GTTs
+2. Verify NSE ticker via `kite_search_instruments()`
+3. Check current holding qty matches GTT qty
+4. Delete stale GTTs for stocks you no longer hold
+
+Example: Aurobindo Pharma = APLLTD (not AUROBINDO)
+
+## Fully Automated Daily Workflow
 
 ```bash
-# Development
-npm start          # Run full daily workflow
-npm run web       # Start dashboard server (auto-opens browser)
-npm run dev       # Alias for npm run web
-npm run refresh   # Refresh live prices via AI agent
-
-# Reporting
-npm run report    # Generate daily Markdown report
-npm run export   # Generate portfolio Excel
-npm run check    # Gate status verification (PASS = safe to trade)
-
-# Testing (Jest)
-npm test                    # Unit + integration tests
-npm run test:unit          # Unit tests only (~116 tests)
-npm run test:api           # API/integration tests only
-npx jest --testPathPattern=<pattern>    # Run single test file
-npx jest src/__tests__/formatters.test.js  # Run specific test file
-npx jest -t "test name"    # Run tests matching name pattern
-
-# Linting
-npm run lint      # Run ESLint on src/
-npm run lint:fix  # Auto-fix lint errors
+npm run workflow
 ```
 
----
+This command:
+1. Validates required JSON files exist
+2. Runs `create_master_markdown.js` → `daily_report.md`
+3. Runs `create_portfolio_export.js` → `Portfolio.xlsx`
+4. Runs `create_dividend_calendar.js`
+5. Runs `create_risk_assessment.js`
+6. Runs `convert_deep_value.js`
+7. Runs `fetch_commodities.js`
 
-## Code Style Guidelines
+## Web Dashboard
 
-### ESLint Rules (enforced)
-- **Curly braces**: Required on all blocks (`if { ... }`)
-- **Quotes**: Single quotes only (`'string'`)
-- **Semicolons**: Always required
-- **No trailing commas**: Forbidden in objects/arrays
-- **No var**: Use `const` by default, `let` when reassignment needed
+The web dashboard (`npm run web`) provides a visual interface:
 
-### Naming Conventions
-- **Variables/functions**: `camelCase` (`formatCurrency`, `totalValue`)
-- **Classes**: `PascalCase` (`PortfolioAnalyzer`, `GTTManager`)
-- **Constants**: `SCREAMING_SNAKE_CASE` (`MAX_POSITION_SIZE`)
-- **Files**: `kebab-case` (`create-portfolio-export.js`, `api.test.js`)
+| Tab | Data Source | Purpose |
+|-----|-------------|---------|
+| Holdings | `portfolio_snapshot.json` | Full portfolio with P&L |
+| Deep Discounts | `value_screen.json` | MoS > 25% stocks |
+| Risk | `risk_assessment.json` | Risk scoring |
+| Concentration | `risk_assessment.json` | Sector weights |
+| Buyback Calendar | `dividend_calendar.json` | Confirmed buybacks |
+| GTT Status | `gtt_audit.json` | Protection status |
+| Opportunities | `opportunities.json` | Web-scanned ideas |
+| Commodities | `commodity_opportunities.json` | MCX prices |
+| Deep Value | `deep_value_screener.json` | Screener results |
 
-### Module System
-- Use `require()` for Node.js modules
-- Use `module.exports` for exports
-- Group requires: built-in → external → local
+## API Endpoints
 
-```javascript
-const fs = require('fs');
-const path = require('path');
-const express = require('express');
-const Formatters = require('./utils/formatters');
+| Endpoint | Returns |
+|----------|---------|
+| `/api/portfolio` | Holdings + P&L |
+| `/api/valuescreen` | IV & MoS |
+| `/api/gtt` | GTT status |
+| `/api/dividends` | Buybacks + dividends |
+| `/api/risk` | Risk assessment |
+| `/api/commodities` | MCX prices |
+| `/api/opportunities` | Opportunities |
+| `/api/deepvalue` | Deep value stocks |
+| `/api/data-status` | Freshness status |
+
+## New India-Specific Skills (v1.2)
+
+### Market Timing Skills
+
+#### 1. India Market Breadth (`prompts/india-market-breadth/SKILL.md`)
+- Fetches NSE advance/decline data, new highs/lows, sector participation
+- 6-component scoring: Overall Breadth, Sector Participation, Sector Rotation, Momentum, Mean Reversion Risk, Historical Context
+- Score 0-100 with market posture recommendations
+- No API required - uses free NSE India data
+
+**Trigger phrases:**
+- "analyze Indian market breadth", "market breadth health"
+- "NSE advance decline ratio", "Nifty breadth analysis"
+
+#### 2. FII/DII Flow Tracker (`prompts/fii-dii-flow-tracker/SKILL.md`)
+- Tracks Foreign Institutional Investor (FII) and Domestic Institutional Investor (DII) daily flows
+- Multi-day trend analysis (5-day, 10-day, 30-day)
+- Flow interpretation matrix with market signals
+- Score 0-100 based on flow direction, trend strength, DII support
+
+**Trigger phrases:**
+- "track FII DII flows", "institutional flows India"
+- "FII selling buying trend", "DII activity today"
+
+#### 3. India News Tracker (`prompts/india-news-tracker/SKILL.md`)
+- Fetches headlines from MoneyControl, Economic Times, LiveMint, BSE/NSE filings
+- Categorizes by impact (1-10 scale): CRITICAL, HIGH, MEDIUM, LOW
+- Filters for actionable opportunities (24-hour recency)
+- Portfolio alerts for holdings
+
+**Trigger phrases:**
+- "Indian market news today", "latest stock news India"
+- "BSE NSE announcements today", "quarterly results India"
+
+## GTT Auto-Placement
+
+Run `npm run gtt:auto` to:
+1. Load portfolio and identify unprotected holdings
+2. Calculate stop-loss (avg_price × 0.88) and target (IV × 0.90)
+3. Generate GTT placement parameters
+4. Provide kite_place_gtt_order() commands to execute
+
+## Daily Workflow with New Skills
+
+```bash
+# Full daily workflow (recommended order)
+npm run scan           # 1. Scan opportunities (new ideas)
+npm run workflow      # 2. Generate reports from existing data
+npm run gtt:auto      # 3. Identify unprotected holdings
+# Then manually execute GTT orders via kite_place_gtt_order()
+npm run web           # 4. View dashboard
 ```
 
-### ES6+ Features (preferred)
-- Arrow functions for callbacks
-- Template literals for string interpolation
-- Destructuring for objects/arrays
-- Async/await for asynchronous code
+## Skill Integration
 
----
-
-## Error Handling Patterns
-
-### Standard Try-Catch Pattern
-```javascript
-try {
-    const data = fs.readFileSync('file.txt', 'utf8');
-} catch (err) {
-    console.error('Failed to read file:', err.message);
-    throw err;
-}
-```
-
-### Async Error Handling
-```javascript
-async function fetchData() {
-    try {
-        const result = await externalCall();
-        return result;
-    } catch (err) {
-        console.error('Fetch failed:', err.message);
-        throw new Error('Data fetch failed');
-    }
-}
-```
-
-### Graceful Degradation
-```javascript
-function getValue(data, fallback = null) {
-    try {
-        return data?.value ?? fallback;
-    } catch {
-        return fallback;
-    }
-}
-```
-
----
-
-## Testing Patterns
-
-### Test Structure (Jest)
-```javascript
-const Formatters = require('../utils/formatters');
-
-describe('Formatters', () => {
-    describe('formatCurrency', () => {
-        test('returns ₹0.00 for null', () => {
-            expect(Formatters.formatCurrency(null)).toBe('₹0.00');
-        });
-    });
-});
-```
-
-### Mocking External Dependencies
-```javascript
-jest.mock('../lib/kite-api', () => ({
-    getHoldings: jest.fn().mockResolvedValue([])
-}));
-```
-
-### Assertion Patterns
-- `toBe()` / `toEqual()` for values
-- `toContain()` for arrays/strings
-- `toThrow()` for error cases
-- `toHaveBeenCalled()` for mocks
-
----
-
-## File Organization
-
-### Source Structure
-```
-src/
-├── __tests__/           # Test files (*.test.js)
-│   ├── api.test.js
-│   ├── formatters.test.js
-│   └── config.test.js
-├── lib/                  # Core utilities
-│   ├── config.js
-│   ├── logger.js
-│   └── jsonUtils.js
-├── routes/              # Express routes
-│   └── api.js
-├── scripts/             # Standalone scripts
-│   └── refresh_live_prices.js
-├── utils/                # Helper functions
-│   └── formatters.js
-├── public/               # Static assets
-│   ├── index.html
-│   └── js/
-├── create_*.js           # Report generators
-├── check_gates.js        # Gate verification
-├── dashboard.js          # CLI dashboard
-└── server.js             # Web server
-```
-
-### Report Output Structure
-```
-reports/
-├── YYYY-MM-DD_*.json     # Agent outputs
-├── YYYY-MM-DD_*.md       # Daily reports
-├── YYYY-MM-DD_*.docx     # Word exports
-├── Portfolio_YYYY-MM-DD.xlsx
-└── Weekly_Portfolio_YYYY-MM-DD.xlsx
-```
-
----
-
-## Key Libraries
-
-| Library | Purpose | Usage |
-|---------|---------|-------|
-| express | Web server | `src/server.js` |
-| exceljs | Excel export | `src/create_portfolio_export.js` |
-| jest | Unit testing | `src/__tests__/*.test.js` |
-| eslint | Code linting | `eslint.config.js` |
-
----
-
-## Common Workflows
-
-### Running Daily Report
-1. AI agent generates JSON files via MCP tools
-2. `npm run report` → Creates Markdown report
-3. `npm run export` → Creates Excel file
-
-### Adding New Stock
-1. Verify symbol via `kite_search_instruments()`
-2. Check fundamentals on screener.in
-3. Calculate intrinsic value (Graham Number / DCF)
-4. Verify MoS > 25% before adding
-
-### Creating New Agent
-1. Add prompt to `prompts/*.md`
-2. Reference in `opencode.json` agents section
-3. Test with sample data
+| New Skill | Integrates With | Data Source |
+|-----------|----------------|-------------|
+| india-market-breadth | fii-dii-flow-tracker, weekly-fno-trade-planner | NSE India CSV |
+| fii-dii-flow-tracker | india-market-breadth, exposure-coach | MoneyControl |
+| india-news-tracker | india-market-breadth, fii-dii-flow-tracker | ET, MCX, BSE/NSE |

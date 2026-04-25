@@ -31,11 +31,21 @@ flowchart TB
         D4["portfolio_snapshot.json<br/>Holdings & P&L"]
         D5["value_screen.json<br/>IV & MoS"]
         D6["gtt_audit.json<br/>GTT Status"]
+        D7["dividend_calendar.json<br/>Dividends & Buybacks"]
+        D8["risk_assessment.json<br/>Risk Analysis"]
     end
 
     subgraph Output["Output"]
-        Docx["daily_report.docx"]
+        Markdown["daily_report.md"]
         Xlsx["Portfolio_YYYY-MM-DD.xlsx"]
+    end
+
+    subgraph UI["Web Dashboard (npm run web)"]
+        Dashboard["http://localhost:3000<br/>Express.js Server"]
+        API["/api/*<br/>REST Endpoints"]
+        HTML["index.html<br/>10 Tab Panels"]
+        JS["app.js<br/>Live Refresh + AI"]
+        CSS["style.css<br/>Inter Font"]
     end
 
     %% Flow connections
@@ -54,22 +64,36 @@ flowchart TB
     A2 --> D5
     A3 --> D6
 
+    D4 --> D7
+    D4 --> D8
+
     D1 --> A4
     D2 --> A4
     D3 --> A4
     D4 --> A4
     D5 --> A4
     D6 --> A4
+    D7 --> A4
+    D8 --> A4
 
-    A4 --> Docx
+    A4 --> Markdown
     A4 --> A45
     A45 --> Xlsx
     A5 -.-> Kite
+
+    Scripts --> Dashboard
+    Dashboard --> API
+    API --> Data
+    API --> HTML
+    
+    UI["Web Dashboard"]:::ui
+    Data --> Dashboard
 
     style Agents fill:#e1f5fe,stroke:#01579b
     style Data fill:#e8f5e8,stroke:#2e7d32
     style Output fill:#fff3e0,stroke:#e65100
     style External fill:#fce4ec,stroke:#c2185b
+    style UI fill:#f3e5f5,stroke:#7b1fa2
 ```
 
 ---
@@ -90,6 +114,7 @@ sequenceDiagram
     participant A5 as order-executor
     participant Kite as Kite MCP
     participant MCX as MCX Commodities
+    participant Scripts as Node Scripts
 
     Note over User,A0: GATE 0: Opportunity & Commodity Scan
     User->>A0: Run opportunity scanner
@@ -129,9 +154,11 @@ sequenceDiagram
     A3->>A3: Save to gtt_audit.json
 
     Note over A3,A4: GATE 4: Report Generation
-    A3->>A4: Run report generator
-    A4->>A4: Load all JSON files
-    A4->>A4: Generate daily_report.docx
+    A3->>Scripts: Run npm run workflow
+    Scripts->>Scripts: Generate daily_report.md
+    Scripts->>Scripts: Generate Portfolio.xlsx
+    Scripts->>Scripts: Create dividend_calendar.json
+    Scripts->>Scripts: Create risk_assessment.json
 
     Note over A4,A45: GATE 4.5: Excel Export
     A4->>A45: Run excel export
@@ -157,10 +184,12 @@ flowchart LR
         News["Financial News"]
         Kite["Kite Holdings"]
         Screener["Screener Data"]
+        MCX["MCX Commodities"]
     end
 
     subgraph Processing["Processing"]
-        Agents["7 Agents<br/>Execute in Sequence"]
+        Agents["AI Agents<br/>(via KiteMCP)"]
+        Scripts["Node Scripts<br/>(npm run workflow)"]
     end
 
     subgraph Storage["Storage Layer"]
@@ -169,15 +198,21 @@ flowchart LR
         JSON3["portfolio_snapshot.json"]
         JSON4["value_screen.json"]
         JSON5["gtt_audit.json"]
+        JSON6["dividend_calendar.json"]
+        JSON7["risk_assessment.json"]
+        JSON8["commodity_opportunities.json"]
     end
 
     subgraph Output["Output"]
-        DOCX["daily_report.docx"]
+        Markdown["daily_report.md"]
+        Xlsx["Portfolio_YYYY-MM-DD.xlsx"]
     end
 
     Input --> Agents
     Agents --> Storage
-    Storage --> DOCX
+    Storage --> Scripts
+    Scripts --> Markdown
+    Scripts --> Xlsx
 ```
 
 ---
@@ -307,11 +342,13 @@ flowchart TB
         S4["opportunities.json<br/>Web Opportunities"]
         S5["news_opportunities.json<br/>News Opportunities"]
         S6["commodity_opportunities.json<br/>Commodities"]
+        S7["dividend_calendar.json<br/>Dividends & Buybacks"]
+        S8["risk_assessment.json<br/>Risk Analysis"]
     end
 
     subgraph Logic["Generate Actions"]
         L1["Extract Unprotected<br/>Holdings"]
-        L2["Extract Deep Discount<br/>Stocks (MoS>40%)"]
+        L2["Extract Deep Discount<br/>Stocks (MoS>25%)"]
         L3["Extract Overvalued<br/>Stocks"]
         L4["Extract Tax-Loss<br/>Candidates (>10%)"]
     end
@@ -326,7 +363,7 @@ flowchart TB
         R7["Section 7: Web Opportunities"]
         R8["Section 8: News Opportunities"]
         R9["Section 9: Commodities"]
-        R10["Section 10: Action Items"]
+        R10["Section 10: Risk Assessment"]
     end
 
     subgraph Excel["Excel Export Sheets"]
@@ -352,14 +389,15 @@ flowchart TB
     S4 --> R7
     S5 --> R8
     S6 --> R9
+    S8 --> R10
     
-    R1 & R2 & R3 & R4 & R5 & R6 & R7 & R8 & R9 & R10 --> Docx["daily_report.docx"]
+    R1 & R2 & R3 & R4 & R5 & R6 & R7 & R8 & R9 & R10 --> Markdown["daily_report.md"]
     
     S1 --> E1
     S1 --> E2
-    S1 --> E3
+    S7 --> E3
     S6 --> E4
-    S1 --> E5
+    S1 & S8 --> E5
     
     E1 & E2 & E3 & E4 & E5 --> Xlsx["Portfolio_YYYY-MM-DD.xlsx"]
 
@@ -459,21 +497,184 @@ flowchart TB
 | **Fundamentals** | Screener.in data via web search, not API | Manually verify before acting |
 | **Charts** | No technical analysis | Use external charting tools |
 | **Execution** | Manual order placement | Place orders after report review |
-| **GTT** | Not auto-updated | Review GTTs weekly |
+| **GTT** | Not auto-updated | Use `npm run gtt:auto` for guidance |
 | **Broker** | Zerodha only | None - platform limitation |
 | **Data** | Quarterly fundamental updates | Use latest annual reports |
 
-### NEW Features Implemented (v1.1)
+### NEW Features Implemented (v1.2 - Market Timing)
 
 | Feature | Status | Implementation |
 |---------|--------|----------------|
-| **Tax-Loss Harvesting** | ✅ ADDED | Flag stocks with >10% loss, calculate potential savings |
-| **Capital Gains Calculation** | ✅ ADDED | Unrealized gains in portfolio_snapshot.json |
-| **Dividend Tracking** | ✅ ADDED | Dividend tracker sheet with expected income |
-| **Excel Export** | ✅ ADDED | create_portfolio_export.js with 5 sheets |
-| **Commodity Scanner** | ✅ ADDED | commodity-scanner agent for MCX |
-| **Weekly Export** | ✅ ADDED | create_weekly_export.js for weekly summary |
+| **NSE Market Breadth** | ✅ ADDED | `prompts/india-market-breadth/SKILL.md` |
+| **FII/DII Flow Tracker** | ✅ ADDED | `prompts/fii-dii-flow-tracker/SKILL.md` |
+| **India News Tracker** | ✅ ADDED | `prompts/india-news-tracker/SKILL.md` |
+| **Auto GTT Placement** | ✅ ADDED | `src/auto_gtt_placement.js`, `npm run gtt:auto` |
+| **Weekly F&O Planner** | ✅ ADDED | `prompts/weekly-fno-trade-planner/SKILL.md` |
 
 ---
 
-*Document Version: v1.1 | Last Updated: March 2026*
+## Web Dashboard UI Architecture
+
+```mermaid
+flowchart TB
+    subgraph Server["Express.js Server (:3000)"]
+        Express["Express.js<br/>app.js"]
+        Static["Static Files<br/>/public"]
+        API["API Routes<br/>/api/*"]
+        Health["/health<br/>Endpoint"]
+    end
+
+    subgraph Frontend["Frontend (SPA)"]
+        HTML["index.html<br/>9 Tab Panels"]
+        
+        subgraph Tabs["Tab Panels"]
+            T1["Holdings Table"]
+            T2["Deep Discounts"]
+            T3["Risk Tracker"]
+            T4["Concentration"]
+            T5["Buyback Calendar"]
+            T6["GTT Status"]
+            T7["Opportunities"]
+            T8["Commodities"]
+            T9["Deep Value"]
+        end
+
+        subgraph Components["Components"]
+            Header["Header<br/>Market Status, Refresh"]
+            Summary["Summary Cards<br/>Value, P&L, Margin"]
+            Alerts["MoS Alert Strip"]
+            Footer["Footer<br/>Sources, Disclaimer"]
+        end
+    end
+
+    subgraph Data["Data Flow"]
+        Fetch["fetch() API"]
+        JSON["JSON Files<br/>(reports/)"]
+        Refresh["Live Refresh<br/>AI Agent"]
+    end
+
+    Express --> Static
+    Express --> API
+    Express --> Health
+    Static --> HTML
+    HTML --> Tabs
+    HTML --> Components
+    HTML --> Fetch
+    Fetch --> API
+    API --> JSON
+    HTML --> Refresh
+```
+
+### Dashboard UI Components
+
+| Component | File | Purpose |
+|-----------|------|---------|
+| **Header** | index.html | Logo, market status, date picker, refresh buttons |
+| **Summary Cards** | index.html | Total Value, P&L, Margin, Holdings count |
+| **MoS Alert Strip** | index.html | Scrolling alerts for stocks with MoS > 25% |
+| **Holdings Table** | index.html | Full holdings with search, sort, P&L, IV, MoS |
+| **Deep Discounts** | index.html | Grid of stocks with MoS > 25% |
+| **Risk Tracker** | index.html | Position risk scoring |
+| **Concentration** | index.html | Sector & holding weight analysis |
+| **Buyback Calendar** | index.html | Confirmed buybacks with premium |
+| **GTT Status** | index.html | Protected vs unprotected holdings |
+| **Opportunities** | index.html | Web-scanned opportunities |
+| **Commodities** | index.html | MCX prices for Gold, Silver, Crude, NG |
+| **Deep Value** | index.html | Screener results from prompts/ |
+
+### API Endpoints
+
+| Endpoint | Method | Returns |
+|----------|--------|---------|
+| `/api/portfolio` | GET | Portfolio holdings + P&L |
+| `/api/valuescreen` | GET | IV & Margin of Safety data |
+| `/api/gtt` | GET | GTT protection status |
+| `/api/dividends` | GET | Dividend calendar & buybacks |
+| `/api/risk` | GET | Risk assessment data |
+| `/api/commodities` | GET | MCX commodity prices |
+| `/api/opportunities` | GET | Web-scanned opportunities |
+| `/api/news` | GET | News opportunities |
+| `/api/deepvalue` | GET | Deep value screener data |
+| `/api/data-status` | GET | Data freshness status |
+| `/health` | GET | Server health check |
+
+### UI Features
+
+| Feature | Description |
+|---------|-------------|
+| **Live Refresh** | Button triggers AI agent for fresh prices |
+| **Date Picker** | Select historical report dates |
+| **Search** | Filter holdings by symbol/company |
+| **Sort** | Sort by value, P&L, symbol |
+| **Stale Warning** | Banner when data > 1 day old |
+| **Mask Toggle** | Hide/show sensitive values |
+| **Tab Navigation** | 10 organized dashboard sections |
+
+### File Structure
+
+```
+src/
+├── server.js              # Express server
+├── public/                # Static files
+│   ├── index.html         # Main SPA
+│   ├── css/
+│   │   └── style.css     # Inter font, responsive design
+│   └── js/
+│       ├── app.js        # Main UI logic
+│       └── live-refresh.js # AI refresh workflow
+└── routes/
+    └── api.js             # REST API endpoints
+```
+
+### Commands
+
+| Command | Action |
+|---------|--------|
+| `npm run web` | Start server + auto-open browser |
+| `npm run dashboard` | CLI dashboard (no browser) |
+| `npm run refresh` | Run AI refresh workflow |
+
+---
+
+## Quick Reference
+
+### Data File Schema
+
+| File | Required Fields | Created By |
+|------|-----------------|------------|
+| `portfolio_snapshot.json` | `total_value`, `holdings[]`, `day_pnl` | AI Agent (Kite MCP) |
+| `value_screen.json` | `stocks[]` with `margin_of_safety` | AI Agent (Web) |
+| `gtt_audit.json` | `protected_holdings[]`, `unprotected_holdings[]` | AI Agent (Kite MCP) |
+| `dividend_calendar.json` | `buybacks[]`, `holdings_dividends[]` | Script |
+| `risk_assessment.json` | `risk_score`, `warnings[]` | Script |
+| `commodity_opportunities.json` | `commodities[]` | Script (MCX) |
+| `opportunities.json` | `opportunities[]` | AI Agent (Web) |
+| `news_opportunities.json` | `news[]` | AI Agent (Web) |
+
+### JSON Schema Validation (run_automated_workflow.js)
+
+```javascript
+portfolio_snapshot.json: {
+  total_value: 'number',
+  day_pnl: 'number',
+  day_pnl_pct: 'number',
+  total_pnl: 'number',
+  total_pnl_pct: 'number',
+  holdings: 'array'
+}
+
+value_screen.json: {
+  stocks: 'array'
+}
+
+gtt_audit.json: {
+  total_gtts_active: 'number',
+  total_protected_holdings: 'number',
+  protected_holdings: 'array',
+  unprotected_holdings: 'array'
+}
+```
+
+---
+
+*Document Version: v1.2 | Last Updated: April 2026*

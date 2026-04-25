@@ -360,26 +360,90 @@ ROOT CAUSE:
 
 ---
 
-### ❌ MISTAKE T-004 — KiteMCP OAuth Session ID Error
+### ❌ MISTAKE T-004 v2 — Order Placement Failed: Remote MCP Server OAuth Exchange
 ```
-DATE     : 2026-03-26
+DATE     : 2026-04-17
+WHAT HAPPENED:
+  kite_get_holdings() → WORKS (returns data)
+  kite_get_ltp() → WORKS (returns prices)
+  kite_place_order() → FAILS "Failed to place order"
+  
+  kite_login shows "already logged in" (session cached in OpenCode)
+  User says "no token" - wants session-only, no API key
+
+ROOT CAUSE:
+  Remote MCP server at mcp.kite.trade has OAuth exchange bug.
+  Cached session works for READ operations but fails for WRITE (trading).
+  Server needs to exchange request_token for access_token - this fails silently.
+
+⛔ NEVER DO:
+  Trust "already logged in" = trading enabled.
+  Assume remote MCP will work for orders if reads work.
+  
+✅ WORKAROUND:
+  1. Use MANUAL EXECUTION - create order list, user executes via Kite web
+  2. Try forcing new login: Use https://kite.zerodha.com/connect/login?api_key=kitemcp&v=3
+  3. Clear OpenCode session cache, restart, re-login
+  4. If remote server broken → wait for server fix or use fallback
+```
+
+### ❌ MISTAKE T-004v2 — Wrong Kite Login URL (kite.trade vs kite.zerodha.com)
+```
+DATE     : 2026-04-17
+WHAT HAPPENED:
+  Used old/wrong login URL https://kite.trade/connect/login in documentation.
+  User faced multiple login failures because documentation had wrong URL.
+  Correct URL is https://kite.zerodha.com/connect/login?api_key=kitemcp
+
+ROOT CAUSE:
+  Documentation had legacy URL from older KiteMCP versions.
+  kite.trade vs kite.zerodha.com are different domains.
+
+⛔ NEVER DO:
+  Use https://kite.trade/connect/login in any documentation or prompts.
+  Use uppercase API key (KITE_MCP_CLIENT vs kitemcp).
+
+✅ FIX / RULE ADDED:
+  All login URLs now use: https://kite.zerodha.com/connect/login?api_key=kitemcp&v=3
+  api_key is lowercase: "kitemcp"
+  Also update AGENTS.md, learnings.md master rules, and .claude/skills/kite-login.md
+```
+
+### ❌ MISTAKE T-004 — KiteMCP OAuth Session ID Error / Order Placement Failed
+```
+DATE     : 2026-03-26 (read-only issue)
+DATE     : 2026-04-17 (order placement failed)
 WHAT HAPPENED:
   KiteMCP remote server at https://mcp.kite.trade/mcp returned 500 error
   on OAuth callback with "missing session_id or request_token" error.
   Cannot execute orders - tools not available in session.
+  
+  Even when logged in (kite_login shows "already logged in"):
+  - kite_get_holdings: WORKS (read data)
+  - kite_get_ltp: WORKS (read data)
+  - kite_place_order: FAILS (write operation)
+  - All orders show "Failed to place order"
 
 ROOT CAUSE:
-  KiteMCP remote server has known bugs (GitHub issues #31, #41, #14).
-  The OAuth callback fails to process request_token properly.
+  1. KiteMCP remote server has known bugs (GitHub issues #31, #41, #14).
+     The OAuth callback fails to process request_token properly.
+  2. OAuth session grants READ access but may not grant WRITE/trade access.
+  3. "Already logged in" status may be cached but actual trading token expired.
 
 ⛔ NEVER DO:
-  Assume remote MCP will work reliably.
+  Trust "already logged in" message for order placement capability.
+  Assume read access = write access.
   
 ✅ FIX / RULE ADDED:
-  [ ] Try local kite-mcp server instead of remote
-  [ ] Use manual execution via broker terminal when MCP fails
-  [ ] Document workaround: execute orders manually, track in this system
-  [ ] Local setup: pip install kite-mcp or npx mcp-remote with local server
+  1. For order placement, ALWAYS re-authorize fresh:
+     - Log out from https://kite.zerodha.com completely
+     - Clear browser session/cookies
+     - Re-authorize via: https://kite.zerodha.com/connect/login?api_key=kitemcp&v=3
+  2. After new authorization, test with 1 small order first
+  3. If still failing → use manual execution fallback:
+     - Create order details manually
+     - User executes via Kite web/terminal
+     - Track in this system
 ```
 
 ---
@@ -1033,6 +1097,70 @@ ROOT CAUSE:
 
 ---
 
+### ❌ MISTAKE P-017 — Skipped Verification of Fetched Values
+```
+DATE     : 2026-04-17
+WHAT HAPPENED:
+  Ran workflow without verifying the fetched data.
+  Some holdings showed wrong quantities, stale prices slipped through.
+  Report generated with incorrect data.
+
+ROOT CAUSE:
+  Assumed data from Kite was correct without cross-checking.
+  No verification step between fetch and save.
+
+⛔ NEVER DO:
+  Save JSON files without verifying the values are correct.
+  Trust fetched data blindly without cross-check.
+
+✅ FIX / RULE ADDED:
+  MANDATORY VERIFICATION CHECKLIST after every fetch:
+    [ ] Holdings count matches expected
+    [ ] Current prices are reasonable (not stale)
+    [ ] P&L percentages calculated correctly
+    [ ] T+1 quantities noted
+    [ ] JSON schema has all required fields
+    [ ] Data freshness: < 1 hour old
+    [ ] Total portfolio value matches UI display
+    [ ] Individual holding values (qty × price) match in UI
+    [ ] Day P&L ≠ Total P&L (verify they are different)
+  If any check fails → re-fetch or fix before saving.
+```
+
+### ❌ MISTAKE P-016 — Started Node Script Before Getting Live Kite Data
+```
+DATE     : 2026-04-17
+WHAT HAPPENED:
+  Ran npm workflow directly without first fetching live data via Kite MCP.
+  Node scripts ran on stale data. Report showed outdated prices/P&L.
+  Dashboard opened with incorrect information.
+
+ROOT CAUSE:
+  Assumed Node scripts would fetch fresh data automatically.
+  KiteMCP and Node.js are independent — no auto-bridge.
+
+⛔ NEVER DO:
+  Run any Node.js script (npm start, npm run workflow, npm run report, etc.)
+  BEFORE fetching live data via Kite MCP tools.
+
+✅ FIX / RULE ADDED:
+  STANDARD WORKFLOW (mandatory order):
+  1. ALWAYS start with Kite MCP tools FIRST to get/update values:
+     - kite_get_holdings() → get current holdings
+     - kite_get_ltp() → get latest live prices
+     - kite_get_gtts() → check GTT status
+     - kite_get_positions() → check current positions
+  2. ONLY AFTER getting updated values from Kite → proceed with Node scripts
+  3. Node scripts read JSON files — they don't fetch live data themselves
+  
+  WORKFLOW ORDER:
+  Kite MCP tools → Update JSON files → Run Node scripts → Generate reports
+  
+  Node.js cannot call Kite MCP — they are separate systems.
+```
+
+---
+
 ## 📋 MASTER RULES DERIVED FROM ALL MISTAKES
 
 These rules are auto-checked by agents. Any violation = hard stop.
@@ -1086,8 +1214,14 @@ These rules are auto-checked by agents. Any violation = hard stop.
  43  Use total_value (not total_market_value) for dashboard  T-014
  44  ALWAYS verify NSE ticker via kite_search before orders  P-015
  45  Delete stale GTTs when no holding exists              P-016
- 46  Buyback calendar with current prices and premium     P-017
-  ─────────────────────────────────────────────────────────────────────
+  46  Buyback calendar with current prices and premium     P-017
+   47  ALWAYS use Kite MCP tools FIRST, then Node scripts   P-016
+   48  ALWAYS verify all values after fetching, before Node scripts  P-017
+   49  Verify total values match UI display (qty × price = value)     P-017
+50  Kite READ works =/= WRITE works (need full re-auth for trading) T-004
+   51  ALWAYS use kite.zerodha.com (NOT kite.trade) for login URLs    T-004v2
+   52  api_key=kitemcp (lowercase) in all login URLs                T-004v2
+     ─────────────────────────────────────────────────────────────────────
 ```
 
 ---
